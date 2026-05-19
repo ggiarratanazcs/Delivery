@@ -1,0 +1,25 @@
+{
+  "short_name": "Delivery",
+  "name": "ZCS Portale Delivery",
+  "description": "Gestione Risorse e Commesse Delivery",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#001d47",
+  "theme_color": "#001d47",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ]
+}
