@@ -271,6 +271,7 @@ export default function App() {
   };
 
   useEffect(() => {
+    document.title = 'ZCS | Delivery Hub';
     supabase.auth.getSession().then(({ data }) => {
       if (data.session) {
         setIsLoggedIn(true);
