@@ -81,7 +81,7 @@ export function LoginPage({ onLogin }) {
           letterSpacing: '0.06em', textAlign: 'center', marginBottom: '4px',
           textShadow: '0 2px 16px rgba(0,0,0,0.4)', lineHeight: 1.1,
         }}>
-          PORTALE DELIVERY
+          DELIVERY HUB
         </h1>
 
         <div style={{
