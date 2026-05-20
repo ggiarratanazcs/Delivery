@@ -514,6 +514,7 @@ export function ProjectModal({ staff, clients, matrix, targetedEdit, onClose, on
         titolo: nuovaAttivita.titolo.trim(), priorita: nuovaAttivita.priorita,
         rif_pratica: nuovaAttivita.rif_pratica || null, data_rilascio: nuovaAttivita.data_rilascio || null,
         bolla_id: nuovaAttivita.bolla_id || null, tipo: 'sviluppo',
+        pm: f.pm_commessa || null,
         data_richiesta: nuovaAttivita.data_richiesta || null, cliente_id: selectedClientId || null,
       }).select().single();
       if (inserted) {
@@ -531,7 +532,7 @@ export function ProjectModal({ staff, clients, matrix, targetedEdit, onClose, on
   const handleSaveAttivita = async () => {
     if (!editingAttivita || !editingAttivita.titolo.trim()) return;
     try {
-      const payload = { titolo: editingAttivita.titolo.trim(), priorita: editingAttivita.priorita, rif_pratica: editingAttivita.rif_pratica || null, data_rilascio: editingAttivita.data_rilascio || null, bolla_id: editingAttivita.bolla_id || null, team_sviluppo: editingAttivita.team_sviluppo || null, assegnata_a: editingAttivita.assegnata_a || null, data_richiesta: editingAttivita.data_richiesta || null };
+      const payload = { titolo: editingAttivita.titolo.trim(), priorita: editingAttivita.priorita, rif_pratica: editingAttivita.rif_pratica || null, data_rilascio: editingAttivita.data_rilascio || null, bolla_id: editingAttivita.bolla_id || null, team_sviluppo: editingAttivita.team_sviluppo || null, assegnata_a: editingAttivita.assegnata_a || null, data_richiesta: editingAttivita.data_richiesta || null, pm: f.pm_commessa || null };
       await supabase.from('attivita').update(payload).eq('id', editingAttivita.id);
       setAttivitaSviluppo(prev => prev.map(a => a.id === editingAttivita.id ? { ...a, ...payload } : a));
       setEditingAttivita(null);
