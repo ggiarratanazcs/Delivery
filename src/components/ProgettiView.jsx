@@ -363,6 +363,27 @@ export function ProgettoView({ progettoId, commessaId, clients, staff, currentUs
                 }} style={{ padding: '5px 10px', borderRadius: '20px', border: '1px solid', fontSize: '11px', fontWeight: 600, cursor: 'pointer', ...(expandAll ? { background: '#eff6ff', borderColor: '#bfdbfe', color: '#0054a6' } : { background: '#f1f5f9', borderColor: '#e2e8f0', color: '#64748b' }) }}>
                   {expandAll ? '▼' : '▶'}
                 </button>
+                <button onClick={() => {
+                  const rows = [['ID','Categoria','Attività','Priorità','Stato','Note','In carico a','Previsto','Collaudo','Step']];
+                  tasks.filter(t => !isReparto(t)).forEach(t => {
+                    rows.push([
+                      t.task_id_display || '', t.categoria || '', t.attivita || '',
+                      t.priorita || '', t.stato || '', t.note || '',
+                      t.in_carico_a === 'CLIENTE' && commessa?.clientName ? commessa.clientName
+                        : t.in_carico_a === 'ZCS/CLIENTE' && commessa?.clientName ? `ZCS/${commessa.clientName}`
+                        : (t.in_carico_a || ''),
+                      t.previsto ? new Date(t.previsto).toLocaleDateString('it-IT') : '',
+                      t.collaudo ? new Date(t.collaudo).toLocaleDateString('it-IT') : '',
+                      t.step || '',
+                    ]);
+                  });
+                  import('xlsx').then(XLSX => {
+                    const ws = XLSX.utils.aoa_to_sheet(rows);
+                    const wb = XLSX.utils.book_new();
+                    XLSX.utils.book_append_sheet(wb, ws, 'Attività');
+                    XLSX.writeFile(wb, `attivita-${commessa?.nome_commessa || 'progetto'}-${new Date().toISOString().slice(0,10)}.xlsx`);
+                  });
+                }} style={{ padding: '5px 12px', borderRadius: '20px', border: '1px solid #C0DD97', background: '#f0fdf4', color: '#27500A', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}>↓ Excel</button>
                 <button onClick={() => setShowModuloModal(true)} style={{ padding: '5px 12px', borderRadius: '20px', border: '1px solid #e2e8f0', background: '#f8fafc', color: '#475569', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}>+ Modulo</button>
                 <button onClick={() => { setEditingTask(null); setNewTaskParentId(null); setNewTaskReparto(reparti[0] || ''); setShowTaskModal(true); }} style={{ padding: '5px 12px', borderRadius: '20px', border: '1px solid #bfdbfe', background: '#eff6ff', color: '#0054a6', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}>+ Task</button>
               </div>
@@ -630,6 +651,35 @@ export function ModuloModal({ progettoId, repartiEsistenti, onClose }) {
 //   import { BolleCommessa } from './KPIView.jsx';
 // ─────────────────────────────────────────────────────────────────────────────
 
+
+
+// ── SearchLens collassabile per le bolle ──────────────────────────────────────
+function SearchLensBolle({ value, onChange }) {
+  const [open, setOpen] = React.useState(false);
+  const ref = React.useRef(null);
+  React.useEffect(() => { if (open && ref.current) ref.current.focus(); }, [open]);
+  React.useEffect(() => { if (value) setOpen(true); }, [value]);
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: open ? '#f8fafc' : 'transparent', border: open ? '1px solid #e2e8f0' : '1px solid transparent', borderRadius: 20, padding: open ? '4px 10px 4px 8px' : '4px', transition: 'all 0.2s', cursor: 'pointer' }}
+        onClick={() => !open && setOpen(true)}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={open ? '#0054a6' : '#94a3b8'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}
+          onClick={e => { if (open) { e.stopPropagation(); setOpen(false); onChange(''); } }}>
+          <circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/>
+        </svg>
+        {open && (
+          <input ref={ref} type="text" value={value} onChange={e => onChange(e.target.value)}
+            placeholder="Cerca bolla..."
+            onBlur={() => { if (!value) setOpen(false); }}
+            style={{ border: 'none', outline: 'none', background: 'transparent', fontSize: 12, width: 140, color: '#0f172a' }} />
+        )}
+        {open && value && (
+          <span onClick={e => { e.stopPropagation(); onChange(''); }} style={{ cursor: 'pointer', color: '#94a3b8', fontSize: 14, lineHeight: 1 }}>×</span>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export function ProgettoHome({ commessa, commessaId, tasks, staff, progettoId, isReparto, chiuso }) {
   const [consuntivi, setConsuntivi] = useState([]);
@@ -1163,12 +1213,7 @@ export function ProgettoHome({ commessa, commessaId, tasks, staff, progettoId, i
                 Bolle di lavoro
                 {tutteBolle.length > 0 && <span style={{ color: '#cbd5e1', fontWeight: 400, marginLeft: 6 }}>{bolleAperte.length} aperte{bolleChiuse.length > 0 ? ` · ${bolleChiuse.length} chiuse` : ''}</span>}
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '5px 10px', border: '1px solid #e2e8f0', borderRadius: '8px', background: '#f8fafc', flex: 1, maxWidth: 280 }}>
-                <svg width="12" height="12" viewBox="0 0 15 15" fill="none" style={{ flexShrink: 0 }}><circle cx="6.5" cy="6.5" r="5" stroke="#94a3b8" strokeWidth="1.5"/><path d="M10 10l3 3" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round"/></svg>
-                <input type="text" placeholder="Cerca per codice o descrizione..." value={searchTesto} onChange={e => setSearchTesto(e.target.value)}
-                  style={{ border: 'none', outline: 'none', fontSize: '12px', background: 'transparent', color: '#0f172a', flex: 1 }} />
-                {searchTesto && <button onClick={() => setSearchTesto('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: '14px', lineHeight: 1, padding: 0 }}>×</button>}
-              </div>
+              <SearchLensBolle value={searchTesto} onChange={setSearchTesto} />
             </div>
             {tutteBolle.length === 0 ? (
               <div style={{ padding: '24px', textAlign: 'center', color: '#94a3b8', fontSize: '12px', fontStyle: 'italic', border: '0.5px dashed #e2e8f0', borderRadius: '8px' }}>Nessuna bolla associata a questa commessa</div>
@@ -1540,46 +1585,6 @@ export function ProgettoGantt({ tasks, reparti, isReparto, onTaskClick, commessa
               })}
             </div>
 
-            {/* ── RIGA INDICATORI SVILUPPO ── */}
-            {attivitaSviluppo.length > 0 && (() => {
-              const grouped = {};
-              attivitaSviluppo.forEach(att => {
-                const idx = dayIndex(att.data_rilascio);
-                if (idx < 0) return;
-                if (!grouped[idx]) grouped[idx] = [];
-                grouped[idx].push(att);
-              });
-              return (
-                <div style={{ display: 'flex', height: ROW_H, borderBottom: '2px solid #9FE1CB', position: 'relative', background: '#f0fdf8' }}>
-                  <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, display: 'flex', alignItems: 'center', paddingLeft: 8 }}>
-                    <span style={{ fontSize: 9, fontWeight: 600, color: '#0F6E56', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Sviluppo</span>
-                  </div>
-                  {allDays.map((d, di) => {
-                    const attsHere = grouped[di] || [];
-                    return (
-                      <div key={di} style={{ width: DAY_W, flexShrink: 0, height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
-                        {attsHere.length > 0 && (
-                          <div
-                            onClick={() => openCardPreview(attsHere[0].id)}
-                            title={attsHere.map(a => a.titolo).join(', ')}
-                            style={{ cursor: 'pointer', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                          >
-                            <svg width="14" height="14" viewBox="0 0 14 14" style={{ display: 'block', filter: 'drop-shadow(0 1px 2px rgba(15,110,86,0.4))' }}>
-                              <polygon points="7,1 13,7 7,13 1,7" fill="#0F6E56" stroke="#fff" strokeWidth="1.5"/>
-                            </svg>
-                            {attsHere.length > 1 && (
-                              <div style={{ position: 'absolute', top: -5, right: -5, width: 11, height: 11, borderRadius: '50%', background: '#BA7517', color: '#fff', fontSize: '8px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #fff' }}>
-                                {attsHere.length}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              );
-            })()}
 
             {/* ── RIGHE TASK ── */}
             {taskRows.map((row, ri) => (
