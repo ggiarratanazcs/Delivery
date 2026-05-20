@@ -522,8 +522,11 @@ export function TodoView({ staff, clients, openCardId, onCardOpened, isAdmin = f
                           )}
                           {(() => {
                             const agCfg = agingConfigMap[col.id];
-                            if (!agCfg?.aging_attivo || !card.colonna_entered_at) return null;
-                            const giorni = Math.floor((Date.now() - new Date(card.colonna_entered_at).getTime()) / 86400000);
+                            if (!agCfg?.aging_attivo) return null;
+                            // usa colonna_entered_at se disponibile, altrimenti created_at come fallback
+                            const entryDate = card.colonna_entered_at || card.created_at;
+                            if (!entryDate) return null;
+                            const giorni = Math.floor((Date.now() - new Date(entryDate).getTime()) / 86400000);
                             const sogGialla = agCfg.soglia_gialla ?? 3;
                             const sogRossa = agCfg.soglia_rossa ?? 7;
                             const agColor = giorni >= sogRossa ? '#ef4444' : giorni >= sogGialla ? '#f59e0b' : '#22c55e';

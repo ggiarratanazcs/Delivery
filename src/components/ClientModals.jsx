@@ -906,10 +906,10 @@ export function ProjectModal({ staff, clients, matrix, targetedEdit, onClose, on
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content large" onClick={e => e.stopPropagation()} style={{ position: 'relative', maxWidth: '900px', width: '95vw', padding: 0, overflow: 'hidden' }}>
+      <div className="modal-content large" onClick={e => e.stopPropagation()} style={{ position: 'relative', maxWidth: '900px', width: '95vw', padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: '92vh' }}>
 
         {/* ── HEADER ── */}
-        <div style={{ padding: '18px 24px 14px', borderBottom: '0.5px solid #e2e8f0', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+        <div style={{ padding: '18px 24px 14px', borderBottom: '0.5px solid #e2e8f0', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexShrink: 0 }}>
           <div>
             <div style={{ fontSize: '16px', fontWeight: 500, color: '#0f172a' }}>{isEdit ? 'Modifica commessa' : 'Nuova commessa'}</div>
             <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
@@ -921,10 +921,10 @@ export function ProjectModal({ staff, clients, matrix, targetedEdit, onClose, on
           <button className="btn-close-circle" onClick={onClose}>×</button>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '210px 1fr', minHeight: '480px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '210px 1fr', flex: 1, overflow: 'hidden', minHeight: 0 }}>
 
           {/* ── SIDEBAR ── */}
-          <div style={{ padding: '14px 10px', borderRight: '0.5px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '2px', background: '#fafbfc' }}>
+          <div style={{ padding: '14px 10px', borderRight: '0.5px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '2px', background: '#fafbfc', overflowY: 'auto' }}>
             {sidebarSections.map((s, idx) => <NavItem key={s.key} s={s} idx={idx} />)}
 
             <div style={{ flex: 1 }} />
@@ -953,8 +953,8 @@ export function ProjectModal({ staff, clients, matrix, targetedEdit, onClose, on
           </div>
 
           {/* ── CONTENUTO SEZIONE ── */}
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <div style={{ padding: '22px 28px', flex: 1, overflowY: 'auto', maxHeight: '420px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <div style={{ padding: '22px 28px', flex: 1, overflowY: 'auto', minHeight: 0 }}>
               <div style={{ fontSize: '15px', fontWeight: 500, color: '#0f172a', marginBottom: '4px' }}>{sectionTitle[activeSection]}</div>
               <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '22px' }}>{sectionSub[activeSection]}</div>
               {activeSection === 'generale' && <SectionGenerale />}

@@ -27,8 +27,9 @@ function workingDaysInMonth(year, month, fromToday = false) {
   today.setHours(0,0,0,0);
   let count = 0;
   const days = new Date(year, month + 1, 0).getDate();
+  // fromToday: partiamo da domani (oggi non è pianificabile)
   const startDay = (fromToday && year === today.getFullYear() && month === today.getMonth())
-    ? today.getDate()
+    ? today.getDate() + 1
     : 1;
   for (let d = startDay; d <= days; d++) {
     const dow = new Date(year, month, d).getDay();
@@ -64,7 +65,7 @@ function toIso(d) {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
-function calcDateLavori(monthKey, hours, fineLavoriNelMese, wdNelMese, usedDaysNelMese) {
+function calcDateLavori(monthKey, hours, fineLavoriNelMese, wdNelMese, usedDaysNelMese, notBefore) {
   const [y, mo] = monthKey.split('-').map(Number);
   let inizio;
   if (fineLavoriNelMese) {
@@ -74,6 +75,16 @@ function calcDateLavori(monthKey, hours, fineLavoriNelMese, wdNelMese, usedDaysN
     }
   } else {
     inizio = firstWorkingDay(y, mo - 1);
+  }
+  // Non iniziare prima di notBefore (es. domani se siamo nel mese corrente)
+  if (notBefore) {
+    const nb = new Date(notBefore);
+    nb.setHours(0, 0, 0, 0);
+    if (inizio < nb) {
+      // Avanza al primo giorno lavorativo >= notBefore
+      inizio = new Date(nb);
+      while (inizio.getDay() === 0 || inizio.getDay() === 6) inizio.setDate(inizio.getDate() + 1);
+    }
   }
   let giorniRimanenti = Math.max(1, Math.ceil(hours / 8));
   let cursor = new Date(inizio);
@@ -338,7 +349,13 @@ export function SviluppoView({ staff, clients = [], isAdmin = false, filterSearc
     const mObj = getMonths(12).find(m => m.key === monthKey);
     const wdNelMese = mObj ? mObj.wd : 21;
     const usedDays = Math.round(((assigned[resId] || {})[monthKey] || 0) / 8);
-    const { inizio, fine } = calcDateLavori(monthKey, dragItem.stima_ore || 8, lastFine, wdNelMese, usedDays);
+    // notBefore: se il mese trascinato è il mese corrente, non iniziare prima di domani
+    const today0 = new Date(); today0.setHours(0,0,0,0);
+    const tomorrow = new Date(today0); tomorrow.setDate(tomorrow.getDate() + 1);
+    const [mkY, mkM] = monthKey.split('-').map(Number);
+    const isCurrentMonth = mkY === today0.getFullYear() && mkM === today0.getMonth() + 1;
+    const notBefore = isCurrentMonth ? tomorrow : null;
+    const { inizio, fine } = calcDateLavori(monthKey, dragItem.stima_ore || 8, lastFine, wdNelMese, usedDays, notBefore);
     setSimulation({
       attId: dragItem.id, resId, monthKey,
       title: dragItem.titolo,
