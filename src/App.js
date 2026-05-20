@@ -1121,6 +1121,7 @@ export default function App() {
         <KPIView staff={staff} matrix={matrix} clients={visibleClients} assignments={assignments}
           skillsConfig={skillsConfig} currentMonths={currentMonths} trainingCells={trainingCells}
           isAdmin={isAdmin}
+          userOverride={currentStaff}
           onOpenProgetto={(progettoId, commessaId) => { setProgettoAperto({ progettoId, commessaId }); setView('progetti'); }}
           onNuovaCommessa={() => setShowNuovaAttivitaWizard(true)}
           onNuovaCommessaDiretta={() => setShowProjectModalFromWizard(true)}
