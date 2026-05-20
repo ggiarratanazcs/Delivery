@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { CardPreviewModal } from './CardPreviewModal.jsx';
 import { supabase } from '../supabase.js';
 import { STATO_COLORS, STATI_TASK, IN_CARICO_OPTIONS } from '../constants.js';
 import { getAvatarColor, getInitials, getAvatarUrl, staffKey, staffLabel, getWeekKey, getWeekRange, workingDays } from '../utils.js';
@@ -1150,7 +1151,7 @@ function KpiPanel({ activeKpi, onClose, onNavigate, onGestisciClienti, onNuovaCo
 
 
 // ── AccordionPersonale — attività/commesse/progetti dell'utente loggato ───────
-function AccordionPersonale({ tipo, userOverride, clients, onOpenProgetto, onNavigateCommessa, onNavigateAttivita }) {
+function AccordionPersonale({ tipo, userOverride, clients, onOpenProgetto, onOpenCommessa, onOpenCard }) {
   const [open, setOpen] = React.useState(false);
   const [items, setItems] = React.useState([]);
   const [loading, setLoading] = React.useState(false);
@@ -1216,10 +1217,10 @@ function AccordionPersonale({ tipo, userOverride, clients, onOpenProgetto, onNav
   const handleClick = (item) => {
     if (tipo === 'progetti' && onOpenProgetto) {
       onOpenProgetto(item.id, item.commessa_id);
-    } else if (tipo === 'commesse' && onNavigateCommessa) {
-      onNavigateCommessa(item.clientId, item.id);
-    } else if (tipo === 'attivita' && item.commessaId && onNavigateCommessa) {
-      onNavigateCommessa(item.clientId, item.commessaId);
+    } else if (tipo === 'commesse' && onOpenCommessa) {
+      onOpenCommessa(item.clientId, item.id);
+    } else if (tipo === 'attivita' && onOpenCard) {
+      onOpenCard(item);
     }
   };
 
@@ -1324,6 +1325,7 @@ export function KPIView({ staff, matrix, clients, assignments, skillsConfig, cur
   const [kpi, setKpi] = useState(null);
   const [kpiLoading, setKpiLoading] = useState(true);
   const [activeKpi, setActiveKpi] = useState(null);
+  const [previewCard, setPreviewCard] = useState(null); // card attività da mostrare in overlay
 
   const RUOLI_ORDER_KPI = ['PM', 'Project Manager', 'Consulente', 'Programmatore', 'Analista'];
 
@@ -1437,13 +1439,13 @@ export function KPIView({ staff, matrix, clients, assignments, skillsConfig, cur
       </div>
 
       {kpi && (
-        <div style={{ padding: isMobile ? '16px' : '24px 32px 0', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 380px', gap: '24px', alignItems: 'start' }}>
+        <div style={{ padding: isMobile ? '16px' : '24px 32px 0', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '320px 1fr', gap: '32px', alignItems: 'start' }}>
 
           {/* ── COLONNA SINISTRA: cerchio + accordion ── */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
             {/* Cerchio Nuova attività — allineato a sinistra, no card */}
-            <div style={{ padding: '8px 0 4px' }}>
+            <div style={{ padding: '8px 0 4px 12px' }}>
               <div onClick={() => onNuovaCommessa && onNuovaCommessa()}
                 style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
                 <div style={{ width: 68, height: 68, borderRadius: '50%', background: '#001d47', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.18s', boxShadow: '0 4px 18px rgba(0,29,71,0.35)' }}
@@ -1458,9 +1460,9 @@ export function KPIView({ staff, matrix, clients, assignments, skillsConfig, cur
             {/* Accordion — stile corporate flat */}
             <div style={{ paddingTop: 8 }}>
               <AccordionPersonale tipo="attivita" userOverride={userOverride} clients={clients} onOpenProgetto={onOpenProgetto}
-                onNavigateCommessa={(clientId, commessaId) => { if (onNavigate) onNavigate('commessa', clientId, commessaId); }} />
+                onOpenCard={(card) => setPreviewCard(card)} />
               <AccordionPersonale tipo="commesse" userOverride={userOverride} clients={clients} onOpenProgetto={onOpenProgetto}
-                onNavigateCommessa={(clientId, commessaId) => { if (onNavigate) onNavigate('commessa', clientId, commessaId); }} />
+                onOpenCommessa={(clientId, commessaId) => { setEntity('commessa'); setSelected(commessaId); const comm = clients.flatMap(c=>c.commesse.map(co=>({...co, label:`${c.nome_progetto} › ${co.nome_commessa}`}))).find(co=>co.id===commessaId); if(comm) setSearch(comm.label||''); }} />
               <AccordionPersonale tipo="progetti" userOverride={userOverride} clients={clients} onOpenProgetto={onOpenProgetto} />
             </div>
           </div>
@@ -1886,6 +1888,13 @@ export function RisorsaDetail({ selected, staff, matrix, clients, assignments, s
             </div>
           </div>
         </div>
+      )}
+      {previewCard && (
+        <CardPreviewModal
+          card={previewCard}
+          colonnaNome={previewCard.colonna?.nome}
+          onClose={() => setPreviewCard(null)}
+        />
       )}
     </div>
   );
