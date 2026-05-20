@@ -277,18 +277,58 @@ export function CardModal({ card, colonne, defaultColId, workflowId, staff, clie
   const [teamConfig, setTeamConfig] = useState([]);
   const [staffSviluppo, setStaffSviluppo] = useState([]);
   const [bolleList, setBolleList] = useState([]);
+  const [commessaId, setCommessaId] = useState(card?.commessa_id || '');
+
+  // Carica bolle filtrate per commessa (se valorizzata) o per cliente
+  const loadBolle = async (cliId, commId) => {
+    if (commId) {
+      // Bolle associate alla commessa tramite commessa_bolle
+      const { data: cb } = await supabase
+        .from('commessa_bolle')
+        .select('bolla_id, bolle_lavoro(id, codice, descrizione)')
+        .eq('commessa_id', commId);
+      setBolleList((cb || []).map(r => r.bolle_lavoro).filter(Boolean).sort((a,b) => a.codice.localeCompare(b.codice)));
+    } else if (cliId) {
+      // Bolle associate a qualsiasi commessa del cliente
+      const client = (clients || []).find(c => c.id === cliId);
+      const commesseIds = (client?.commesse || []).map(co => co.id).filter(Boolean);
+      if (commesseIds.length > 0) {
+        const { data: cb } = await supabase
+          .from('commessa_bolle')
+          .select('bolla_id, bolle_lavoro(id, codice, descrizione)')
+          .in('commessa_id', commesseIds);
+        const unique = {};
+        (cb || []).forEach(r => { if (r.bolle_lavoro) unique[r.bolle_lavoro.id] = r.bolle_lavoro; });
+        setBolleList(Object.values(unique).sort((a,b) => a.codice.localeCompare(b.codice)));
+      } else {
+        setBolleList([]);
+      }
+    } else {
+      setBolleList([]);
+    }
+  };
 
   useEffect(() => {
     Promise.all([
       supabase.from('config_team_prodotto').select('*').order('ordine'),
       supabase.from('staff').select('id, nome, cognome, ruolo, team_prodotto').in('ruolo', ['Programmatore', 'Analista']),
-      supabase.from('bolle_lavoro').select('id, codice, descrizione').order('codice'),
-    ]).then(([{ data: teams }, { data: devs }, { data: bolle }]) => {
+    ]).then(([{ data: teams }, { data: devs }]) => {
       setTeamConfig(teams || []);
       setStaffSviluppo(devs || []);
-      setBolleList(bolle || []);
     });
+    // Carica bolle in base al contesto iniziale
+    loadBolle(card?.cliente_id || clienteId, card?.commessa_id || commessaId);
   }, []);
+
+  // Ricarica bolle quando cliente o commessa cambiano
+  useEffect(() => {
+    loadBolle(clienteId, commessaId);
+    // Se la bolla selezionata non è più disponibile, resettala
+    setBollaId(prev => {
+      if (!prev) return prev;
+      return prev; // verrà filtrato nella lista, nessun reset brusco
+    });
+  }, [clienteId, commessaId]);
 
   const colonneDisponibili = colonne.filter(c => {
     if (!card?.colonna_id) return true;
@@ -385,6 +425,7 @@ export function CardModal({ card, colonne, defaultColId, workflowId, staff, clie
       bolla_id: bollaId || null,
       rif_pratica: rifPratica || null,
       cliente_id: clienteId || null,
+      commessa_id: commessaId || card?.commessa_id || null,
       stima_ore: stimaOre ? parseFloat(stimaOre) : null,
     };
 
@@ -613,8 +654,19 @@ export function CardModal({ card, colonne, defaultColId, workflowId, staff, clie
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               {fld('Data richiesta', <DatePicker value={dataRichiesta} onChange={setDataRichiesta} />)}
-              {fld('Cliente', <SelectDropdown options={[{ value: '', label: '— nessuno —' }, ...(clients || []).map(c => ({ value: c.id, label: c.nome_progetto }))]} value={clienteId} onChange={setClienteId} placeholder="— nessuno —" />)}
+              {fld('Cliente', <SelectDropdown options={[{ value: '', label: '— nessuno —' }, ...(clients || []).map(c => ({ value: c.id, label: c.nome_progetto }))]} value={clienteId} onChange={v => { setClienteId(v); setCommessaId(''); setBollaId(''); }} placeholder="— nessuno —" />)}
             </div>
+
+            {clienteId && (() => {
+              const client = (clients || []).find(c => c.id === clienteId);
+              const commesseOpts = (client?.commesse || []).filter(co => co.attiva !== false).map(co => ({ value: co.id, label: co.nome_commessa }));
+              if (commesseOpts.length === 0) return null;
+              return (
+                <div style={{ marginTop: '12px' }}>
+                  {fld('Commessa', <SelectDropdown options={[{ value: '', label: '— nessuna —' }, ...commesseOpts]} value={commessaId} onChange={v => { setCommessaId(v); setBollaId(''); }} placeholder="— nessuna —" />)}
+                </div>
+              );
+            })()}
 
             {isEdit && card?.data_fine_lavori && (
               <div style={{ background: '#f8fafc', borderRadius: 8, padding: '7px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -648,3 +700,4 @@ export function CardModal({ card, colonne, defaultColId, workflowId, staff, clie
     </div>
   );
 }
+

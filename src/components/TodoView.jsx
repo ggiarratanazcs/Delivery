@@ -113,6 +113,7 @@ export function TodoView({ staff, clients, openCardId, onCardOpened, isAdmin = f
   const [teamProdottoList, setTeamProdottoList] = useState([]);
 
   const [dragCard, setDragCard] = useState(null);
+  const [agingConfigMap, setAgingConfigMap] = useState({}); // { colonna_id: { aging_attivo, soglia_gialla, soglia_rossa } }
   const [dragOver, setDragOver] = useState(null);
 
   const isMobile = useIsMobile();
@@ -177,6 +178,13 @@ export function TodoView({ staff, clients, openCardId, onCardOpened, isAdmin = f
     setAttivita(att || []);
     setTransizioni(trans || []);
     if (wf && wf.length > 0 && !selectedWorkflow) setSelectedWorkflow(wf[0].id);
+    // Carica aging config per tutte le colonne
+    if (col && col.length > 0) {
+      const { data: agData } = await supabase.from('workflow_aging_config').select('*').in('colonna_id', col.map(c => c.id));
+      const agMap = {};
+      (agData || []).forEach(r => { agMap[r.colonna_id] = r; });
+      setAgingConfigMap(agMap);
+    }
     setLoading(false);
   };
 
@@ -243,7 +251,7 @@ export function TodoView({ staff, clients, openCardId, onCardOpened, isAdmin = f
     const nuovaColonna = currentColonne.find(c => c.id === colId);
     const updated = { ...dragCard, colonna_id: colId };
     setAttivita(prev => prev.map(a => a.id === dragCard.id ? updated : a));
-    await supabase.from('attivita').update({ colonna_id: colId }).eq('id', dragCard.id);
+    await supabase.from('attivita').update({ colonna_id: colId, colonna_entered_at: new Date().toISOString() }).eq('id', dragCard.id);
     // Invia notifiche configurate per questa colonna
     if (nuovaColonna) await inviaNotificheTransizione(dragCard, nuovaColonna, staff);
     setDragCard(null); setDragOver(null);
@@ -512,6 +520,27 @@ export function TodoView({ staff, clients, openCardId, onCardOpened, isAdmin = f
                               {getInitials(staffLabel(staffObj))}
                             </div>
                           )}
+                          {(() => {
+                            const agCfg = agingConfigMap[col.id];
+                            if (!agCfg?.aging_attivo || !card.colonna_entered_at) return null;
+                            const giorni = Math.floor((Date.now() - new Date(card.colonna_entered_at).getTime()) / 86400000);
+                            const sogGialla = agCfg.soglia_gialla ?? 3;
+                            const sogRossa = agCfg.soglia_rossa ?? 7;
+                            const agColor = giorni >= sogRossa ? '#ef4444' : giorni >= sogGialla ? '#f59e0b' : '#22c55e';
+                            const agBg = giorni >= sogRossa ? '#fef2f2' : giorni >= sogGialla ? '#fefce8' : '#f0fdf4';
+                            const agBorder = giorni >= sogRossa ? '#fca5a5' : giorni >= sogGialla ? '#fde68a' : '#86efac';
+                            return (
+                              <div title={`In questa colonna da ${giorni} giorn${giorni === 1 ? 'o' : 'i'}`}
+                                style={{ display: 'flex', alignItems: 'center', gap: '2px', marginLeft: !ac ? 'auto' : '2px', background: agBg, border: `0.5px solid ${agBorder}`, borderRadius: '20px', padding: '1px 5px', flexShrink: 0 }}>
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={agColor} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <circle cx="12" cy="13" r="7"/>
+                                  <polyline points="12 10 12 13 14 15"/>
+                                  <path d="M5 3 2 6M22 6l-3-3"/>
+                                </svg>
+                                <span style={{ fontSize: '9px', fontWeight: 700, color: agColor, fontFamily: 'monospace' }}>{giorni}g</span>
+                              </div>
+                            );
+                          })()}
                         </div>
                       </div>
                     );
@@ -658,6 +687,7 @@ export function WfEditorModal({ workflowId, workflowNome, onClose, onDelete }) {
   const [graphZoom, setGraphZoom] = useState(100);
   const [deletingWf, setDeletingWf] = useState(false);
   const [notificheConfig, setNotificheConfig] = useState({}); // { colonna_id: { id, notifica_analista, notifica_pm } }
+  const [agingConfig, setAgingConfig] = useState({}); // { colonna_id: { id, aging_attivo, soglia_gialla, soglia_rossa } }
 
   useEffect(() => { loadData(); }, []);
 
@@ -672,6 +702,10 @@ export function WfEditorModal({ workflowId, workflowNome, onClose, onDelete }) {
       const map = {};
       (nc || []).forEach(r => { map[r.colonna_id] = r; });
       setNotificheConfig(map);
+      const { data: ac } = await supabase.from('workflow_aging_config').select('*').in('colonna_id', cols.map(c => c.id));
+      const agMap = {};
+      (ac || []).forEach(r => { agMap[r.colonna_id] = r; });
+      setAgingConfig(agMap);
     }
     setLoading(false);
   };
@@ -739,6 +773,19 @@ export function WfEditorModal({ workflowId, workflowNome, onClose, onDelete }) {
         .insert({ colonna_id: colonnaId, notifica_analista: campo === 'notifica_analista' ? newVal : false, notifica_pm: campo === 'notifica_pm' ? newVal : false })
         .select().single();
       if (data) setNotificheConfig(prev => ({ ...prev, [colonnaId]: data }));
+    }
+  };
+
+  const toggleAging = async (colonnaId, campo, valore) => {
+    const existing = agingConfig[colonnaId];
+    if (existing) {
+      await supabase.from('workflow_aging_config').update({ [campo]: valore }).eq('id', existing.id);
+      setAgingConfig(prev => ({ ...prev, [colonnaId]: { ...prev[colonnaId], [campo]: valore } }));
+    } else {
+      const defaults = { colonna_id: colonnaId, aging_attivo: false, soglia_gialla: 3, soglia_rossa: 7 };
+      const payload = { ...defaults, [campo]: valore };
+      const { data } = await supabase.from('workflow_aging_config').insert(payload).select().single();
+      if (data) setAgingConfig(prev => ({ ...prev, [colonnaId]: data }));
     }
   };
 
@@ -990,6 +1037,27 @@ export function WfEditorModal({ workflowId, workflowNome, onClose, onDelete }) {
                             <div style={{ position: 'absolute', top: 2, left: notificheConfig[col.id]?.notifica_pm ? 14 : 2, width: 12, height: 12, borderRadius: '50%', background: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.2)' }} />
                           </div>
                           <span style={{ fontSize: '10px', color: notificheConfig[col.id]?.notifica_pm ? '#0054a6' : '#94a3b8', fontWeight: 500, minWidth: 16 }}>PM</span>
+                        </div>
+                        {/* Toggle Aging */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <div onClick={() => toggleAging(col.id, 'aging_attivo', !(agingConfig[col.id]?.aging_attivo || false))}
+                            style={{ width: 28, height: 16, borderRadius: '20px', background: agingConfig[col.id]?.aging_attivo ? '#f59e0b' : '#cbd5e1', position: 'relative', cursor: 'pointer', flexShrink: 0, transition: 'background 0.2s' }}>
+                            <div style={{ position: 'absolute', top: 2, left: agingConfig[col.id]?.aging_attivo ? 14 : 2, width: 12, height: 12, borderRadius: '50%', background: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.2)' }} />
+                          </div>
+                          <span style={{ fontSize: '10px', color: agingConfig[col.id]?.aging_attivo ? '#b45309' : '#94a3b8', fontWeight: 500, minWidth: 30 }}>Aging</span>
+                          {agingConfig[col.id]?.aging_attivo && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginLeft: 2 }}>
+                              <span style={{ fontSize: '9px', color: '#eab308' }}>🟡</span>
+                              <input type="number" min="1" max="999" value={agingConfig[col.id]?.soglia_gialla ?? 3}
+                                onChange={e => toggleAging(col.id, 'soglia_gialla', parseInt(e.target.value) || 3)}
+                                style={{ width: 36, fontSize: '11px', border: '1px solid #fde68a', borderRadius: '4px', padding: '1px 4px', textAlign: 'center', background: '#fefce8', color: '#92400e' }} />
+                              <span style={{ fontSize: '9px', color: '#ef4444' }}>🔴</span>
+                              <input type="number" min="1" max="999" value={agingConfig[col.id]?.soglia_rossa ?? 7}
+                                onChange={e => toggleAging(col.id, 'soglia_rossa', parseInt(e.target.value) || 7)}
+                                style={{ width: 36, fontSize: '11px', border: '1px solid #fca5a5', borderRadius: '4px', padding: '1px 4px', textAlign: 'center', background: '#fef2f2', color: '#dc2626' }} />
+                              <span style={{ fontSize: '9px', color: '#94a3b8' }}>gg</span>
+                            </div>
+                          )}
                         </div>
                         <button onClick={() => setEditingCol({ id: col.id, nome: col.nome, colore: col.colore })} style={{ background: 'none', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '4px 9px', cursor: 'pointer', fontSize: '12px', color: '#475569' }}>✏️</button>
                         <button onClick={() => deleteColonna(col.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', color: '#94a3b8' }}>🗑️</button>

@@ -193,6 +193,65 @@ function SelectDropdown({ options = [], value, onChange, placeholder = 'Scegli..
 }
 
 // ─────────────────────────────────────────────
+// KPI Economico Sidebar — versione compatta per la sidebar commessa
+function KpiEconomicoSidebar({ commessaId, ordiniCommessa }) {
+  const [costo, setCosto] = useState(0);
+  const [loadingKpi, setLoadingKpi] = useState(false);
+  const COSTO_GIORNO = 380;
+
+  useEffect(() => {
+    if (!commessaId) { setCosto(0); return; }
+    setLoadingKpi(true);
+    supabase.from('commessa_bolle').select('bolla_id, bolle_lavoro(codice)').eq('commessa_id', commessaId)
+      .then(async ({ data: cb }) => {
+        const codici = (cb || []).map(r => r.bolle_lavoro?.codice).filter(Boolean);
+        if (codici.length === 0) { setCosto(0); setLoadingKpi(false); return; }
+        const { data: cons } = await supabase.from('consuntivi_globali').select('ore_tecniche').in('codice_bolla', codici);
+        const totOre = (cons || []).reduce((s, c) => s + (parseFloat(c.ore_tecniche) || 0), 0);
+        setCosto((totOre / 8) * COSTO_GIORNO);
+        setLoadingKpi(false);
+      });
+  }, [commessaId]);
+
+  const valore = ordiniCommessa.reduce((s, o) => s + (parseFloat(o.importo) || 0), 0);
+  const margine = valore - costo;
+  const marginePerc = valore > 0 ? (margine / valore * 100) : null;
+  const fmtEur = (n) => new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n);
+  const fmtNum = (n, d = 1) => (Math.round(n * 10 ** d) / 10 ** d).toFixed(d).replace('.', ',');
+  const margineColor = margine >= 0 && valore > 0 ? '#16a34a' : valore > 0 ? '#dc2626' : '#94a3b8';
+  const costoPct = valore > 0 ? Math.min(100, (costo / valore) * 100) : 0;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '4px' }}>
+        <span style={{ fontSize: '10px', color: '#94a3b8' }}>Valore</span>
+        <div style={{ textAlign: 'right' }}>
+          <span style={{ fontSize: '12px', fontWeight: 600, color: '#185FA5', fontFamily: 'monospace' }}>{valore > 0 ? fmtEur(valore) : '—'}</span>
+          {valore > 0 && <div style={{ fontSize: '9px', color: '#94a3b8' }}>da ordini</div>}
+        </div>
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '4px' }}>
+        <span style={{ fontSize: '10px', color: '#94a3b8' }}>Costo</span>
+        <div style={{ textAlign: 'right' }}>
+          <span style={{ fontSize: '12px', fontWeight: 600, color: '#D85A30', fontFamily: 'monospace' }}>{loadingKpi ? '...' : costo > 0 ? fmtEur(costo) : '—'}</span>
+          {costo > 0 && <div style={{ fontSize: '9px', color: '#94a3b8' }}>{fmtNum(costo / COSTO_GIORNO)}g</div>}
+        </div>
+      </div>
+      {valore > 0 && costo > 0 && (
+        <div style={{ height: 3, background: '#e2e8f0', borderRadius: 2, overflow: 'hidden', margin: '2px 0' }}>
+          <div style={{ width: `${costoPct}%`, height: '100%', background: '#D85A30', borderRadius: 2 }} />
+        </div>
+      )}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '4px', borderTop: '0.5px solid #e2e8f0', marginTop: '2px' }}>
+        <span style={{ fontSize: '10px', color: '#94a3b8' }}>Margine</span>
+        <span style={{ fontSize: '13px', fontWeight: 700, color: margineColor, fontFamily: 'monospace' }}>
+          {marginePerc !== null ? `${fmtNum(marginePerc)}%` : '—'}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 // KPI Economico Commessa
 // ─────────────────────────────────────────────
 function KpiEconomicoCommessa({ commessaId, ordiniCommessa }) {
@@ -870,15 +929,25 @@ export function ProjectModal({ staff, clients, matrix, targetedEdit, onClose, on
 
             <div style={{ flex: 1 }} />
 
-            {/* Box stato */}
-            <div style={{ margin: '8px 4px 4px', padding: '12px', borderRadius: '10px', background: '#fff', border: '0.5px solid #e2e8f0' }}>
-              <div style={{ fontSize: '10px', fontWeight: 500, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '7px' }}>Stato commessa</div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-                <span style={{ width: 7, height: 7, borderRadius: '50%', background: f.attiva !== false ? '#22c55e' : '#94a3b8', flexShrink: 0 }} />
-                <span style={{ fontSize: '12px', fontWeight: 500, color: '#0f172a' }}>{f.attiva !== false ? 'Attiva' : 'Chiusa'}</span>
+            {/* Box stato + Economico */}
+            <div style={{ margin: '8px 4px 4px', borderRadius: '10px', background: '#fff', border: '0.5px solid #e2e8f0', overflow: 'hidden' }}>
+              {/* Stato commessa */}
+              <div style={{ padding: '12px 12px 10px' }}>
+                <div style={{ fontSize: '10px', fontWeight: 500, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '7px' }}>Stato commessa</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                  <span style={{ width: 7, height: 7, borderRadius: '50%', background: f.attiva !== false ? '#22c55e' : '#94a3b8', flexShrink: 0 }} />
+                  <span style={{ fontSize: '12px', fontWeight: 500, color: '#0f172a' }}>{f.attiva !== false ? 'Attiva' : 'Chiusa'}</span>
+                </div>
+                {(f.data_inizio || f.data_fine) && (
+                  <div style={{ fontSize: '11px', color: '#94a3b8' }}>{fmtDate(f.data_inizio) || '—'} → {fmtDate(f.data_fine) || '—'}</div>
+                )}
               </div>
-              {(f.data_inizio || f.data_fine) && (
-                <div style={{ fontSize: '11px', color: '#94a3b8' }}>{fmtDate(f.data_inizio) || '—'} → {fmtDate(f.data_fine) || '—'}</div>
+              {/* KPI Economico compatto */}
+              {selectedCommessaId && (
+                <div style={{ borderTop: '0.5px solid #e2e8f0', padding: '10px 12px', background: '#fafbfc' }}>
+                  <div style={{ fontSize: '10px', fontWeight: 500, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>Economico</div>
+                  <KpiEconomicoSidebar commessaId={selectedCommessaId} ordiniCommessa={ordiniCommessa} />
+                </div>
               )}
             </div>
           </div>
@@ -894,13 +963,6 @@ export function ProjectModal({ staff, clients, matrix, targetedEdit, onClose, on
               {activeSection === 'ordini' && <SectionOrdini />}
               {activeSection === 'sviluppo' && <SectionSviluppo />}
             </div>
-
-            {/* ── KPI ECONOMICO ── */}
-            {selectedCommessaId && (
-              <div style={{ padding: '10px 20px', borderTop: '0.5px solid #e2e8f0' }}>
-                <KpiEconomicoCommessa commessaId={selectedCommessaId} ordiniCommessa={ordiniCommessa} />
-              </div>
-            )}
 
             {/* ── FOOTER AZIONI ── */}
             <div style={{ padding: '12px 28px', borderTop: '0.5px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '8px' }}>
