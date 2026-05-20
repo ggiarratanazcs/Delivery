@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { CardPreviewModal } from './CardPreviewModal.jsx';
+import { supabase } from '../supabase.js';
 import { CardModal } from './CardModal.jsx';
 import { ProjectModal } from './ClientModals.jsx';
-import { supabase } from '../supabase.js';
 import { STATO_COLORS, STATI_TASK, IN_CARICO_OPTIONS } from '../constants.js';
 import { getAvatarColor, getInitials, getAvatarUrl, staffKey, staffLabel, getWeekKey, getWeekRange, workingDays } from '../utils.js';
 import { ProdottiBadges } from './ProdottiSelector.jsx';
@@ -1152,143 +1151,128 @@ function KpiPanel({ activeKpi, onClose, onNavigate, onGestisciClienti, onNuovaCo
 }
 
 
-
 // ── KpiPopup — popup contestuale per ogni cubo KPI ───────────────────────────
-function KpiPopup({ tipo, color, onClose, staff, clients, onNavigate, onGestisciClienti, onNuovaCommessa, onNuovaCommessaDiretta, onImportExcel }) {
-  const [search, setSearch] = React.useState('');
-  const searchRef = React.useRef(null);
-  React.useEffect(() => { if (searchRef.current) searchRef.current.focus(); }, []);
-
-  // Chiudi cliccando fuori
+function KpiPopup({ tipo, color, onClose, staff, clients, onNavigate, onGestisciClienti, onNuovaCommessaDiretta, setEntity, setSelected, setSearch, setActiveKpi }) {
+  const [q, setQ] = React.useState('');
+  const inputRef = React.useRef(null);
+  React.useEffect(() => { setTimeout(() => inputRef.current?.focus(), 50); }, []);
   React.useEffect(() => {
-    const handler = (e) => {
-      if (!e.target.closest('[data-kpi-popup]') && !e.target.closest('[data-kpi-trigger]')) onClose();
-    };
-    setTimeout(() => document.addEventListener('mousedown', handler), 0);
-    return () => document.removeEventListener('mousedown', handler);
+    const h = (e) => { if (!e.target.closest('[data-kpipopup]')) onClose(); };
+    setTimeout(() => document.addEventListener('mousedown', h), 0);
+    return () => document.removeEventListener('mousedown', h);
   }, [onClose]);
 
-  const Divider = () => <div style={{ height: '0.5px', background: '#f1f5f9', margin: '4px 0' }} />;
-  const Item = ({ icon, label, sub, onClick, color: ic }) => (
+  const Item = ({ icon, label, sub, onClick }) => (
     <div onClick={() => { onClick(); onClose(); }}
-      style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 14px', borderRadius: 8, cursor: 'pointer', transition: 'background 0.12s' }}
-      onMouseOver={e => e.currentTarget.style.background = '#f8fafc'}
-      onMouseOut={e => e.currentTarget.style.background = 'transparent'}>
-      <div style={{ width: 30, height: 30, borderRadius: 8, background: (ic || color) + '15', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-        <i className={`ti ${icon}`} style={{ fontSize: 15, color: ic || color }} aria-hidden="true" />
+      style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 14px', borderRadius:8, cursor:'pointer' }}
+      onMouseOver={e=>e.currentTarget.style.background='#f8fafc'}
+      onMouseOut={e=>e.currentTarget.style.background='transparent'}>
+      <div style={{ width:30, height:30, borderRadius:8, background:color+'18', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+        <i className={`ti ${icon}`} style={{ fontSize:15, color }} aria-hidden="true" />
       </div>
       <div>
-        <div style={{ fontSize: 13, fontWeight: 500, color: '#0f172a' }}>{label}</div>
-        {sub && <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 1 }}>{sub}</div>}
+        <div style={{ fontSize:13, fontWeight:500, color:'#0f172a' }}>{label}</div>
+        {sub && <div style={{ fontSize:11, color:'#94a3b8', marginTop:1 }}>{sub}</div>}
+      </div>
+    </div>
+  );
+  const Sep = () => <div style={{ height:'0.5px', background:'#f1f5f9', margin:'4px 8px' }} />;
+  const SearchBox = ({ ph }) => (
+    <div style={{ padding:'8px 14px 4px' }}>
+      <div style={{ display:'flex', alignItems:'center', gap:6, background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:8, padding:'6px 10px' }}>
+        <i className="ti ti-search" style={{ fontSize:13, color:'#94a3b8' }} aria-hidden="true" />
+        <input ref={inputRef} value={q} onChange={e=>setQ(e.target.value)} placeholder={ph}
+          style={{ border:'none', background:'transparent', outline:'none', fontSize:12, flex:1, color:'#0f172a', fontFamily:'inherit' }} />
+        {q && <span onClick={()=>setQ('')} style={{ cursor:'pointer', color:'#94a3b8', fontSize:14 }}>×</span>}
       </div>
     </div>
   );
 
-  const filteredStaff = search
-    ? staff.filter(s => `${s.nome} ${s.cognome}`.toLowerCase().includes(search.toLowerCase()) || (s.ruolo || '').toLowerCase().includes(search.toLowerCase()))
-    : [];
-
-  const filteredClients = search
-    ? clients.filter(c => c.nome_progetto.toLowerCase().includes(search.toLowerCase())).slice(0, 5)
-    : [];
-
-  const filteredCommesse = search
-    ? clients.flatMap(c => (c.commesse || []).filter(co => co.attiva !== false && co.nome_commessa.toLowerCase().includes(search.toLowerCase())).map(co => ({ ...co, clientName: c.nome_progetto, clientId: c.id }))).slice(0, 5)
-    : [];
-
-  const renderSearch = (placeholder, results, renderRow) => (
-    <>
-      <div style={{ padding: '8px 14px 4px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 7, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '6px 10px' }}>
-          <i className="ti ti-search" style={{ fontSize: 13, color: '#94a3b8', flexShrink: 0 }} aria-hidden="true" />
-          <input ref={searchRef} type="text" value={search} onChange={e => setSearch(e.target.value)}
-            placeholder={placeholder}
-            style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: 13, flex: 1, color: '#0f172a', fontFamily: 'inherit' }} />
-          {search && <span onClick={() => setSearch('')} style={{ cursor: 'pointer', color: '#94a3b8', fontSize: 14, lineHeight: 1 }}>×</span>}
-        </div>
-      </div>
-      {search.trim() && results.length > 0 && (
-        <div style={{ maxHeight: 180, overflowY: 'auto', padding: '4px 0' }}>
-          {results.map(renderRow)}
-        </div>
-      )}
-      {search.trim() && results.length === 0 && (
-        <div style={{ padding: '8px 14px', fontSize: 12, color: '#94a3b8', fontStyle: 'italic' }}>Nessun risultato</div>
-      )}
-    </>
-  );
+  const staffRes = q ? staff.filter(s=>`${s.nome} ${s.cognome} ${s.ruolo||''}`.toLowerCase().includes(q.toLowerCase())).slice(0,5) : [];
+  const clientRes = q ? clients.filter(c=>c.nome_progetto.toLowerCase().includes(q.toLowerCase())).slice(0,5) : [];
+  const commRes = q ? clients.flatMap(c=>(c.commesse||[]).filter(co=>co.attiva!==false&&co.nome_commessa.toLowerCase().includes(q.toLowerCase())).map(co=>({...co,clientName:c.nome_progetto,clientId:c.id}))).slice(0,5) : [];
 
   return (
-    <div data-kpi-popup="1"
-      style={{ position: 'absolute', top: 'calc(100% + 8px)', left: '50%', transform: 'translateX(-50%)', zIndex: 500, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, boxShadow: '0 12px 40px rgba(0,18,41,0.14)', width: 280, overflow: 'hidden', padding: '6px 0' }}>
-      {/* Indicatore freccia */}
-      <div style={{ position: 'absolute', top: -6, left: '50%', transform: 'translateX(-50%)', width: 12, height: 12, background: '#fff', border: '1px solid #e2e8f0', borderBottom: 'none', borderRight: 'none', transform: 'translateX(-50%) rotate(45deg)' }} />
+    <div data-kpipopup="1"
+      style={{ position:'absolute', top:'calc(100% + 10px)', left:'50%', transform:'translateX(-50%)', zIndex:600, background:'#fff', border:'1px solid #e2e8f0', borderRadius:14, boxShadow:'0 16px 48px rgba(0,18,41,0.16)', width:272, overflow:'hidden', paddingBottom:6 }}>
+      <div style={{ position:'absolute', top:-6, left:'50%', width:12, height:12, background:'#fff', border:'1px solid #e2e8f0', borderBottom:'none', borderRight:'none', transform:'translateX(-50%) rotate(45deg)' }} />
 
       {tipo === 'risorsa' && <>
-        {renderSearch('Cerca risorsa per nome o ruolo...', filteredStaff, s => (
-          <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 14px', cursor: 'pointer' }}
-            onMouseOver={e => e.currentTarget.style.background = '#f8fafc'}
-            onMouseOut={e => e.currentTarget.style.background = 'transparent'}
-            onClick={() => { if (onNavigate) onNavigate('risorsa', null, `${s.cognome} ${s.nome}`); onClose(); }}>
-            <div style={{ width: 26, height: 26, borderRadius: '50%', background: '#E1F5EE', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 600, color: '#0F6E56', flexShrink: 0 }}>
-              {(s.nome?.[0] || '') + (s.cognome?.[0] || '')}
+        <SearchBox ph="Cerca risorsa..." />
+        {staffRes.map(s => (
+          <div key={s.id} onClick={()=>{ setEntity('risorsa'); setSelected(`${s.cognome} ${s.nome}`); setSearch(`${s.cognome} ${s.nome}`); setActiveKpi(null); onClose(); }}
+            style={{ display:'flex', alignItems:'center', gap:8, padding:'7px 14px', cursor:'pointer', borderRadius:6, margin:'0 6px' }}
+            onMouseOver={e=>e.currentTarget.style.background='#f8fafc'}
+            onMouseOut={e=>e.currentTarget.style.background='transparent'}>
+            <div style={{ width:26, height:26, borderRadius:'50%', background:'#E1F5EE', display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, fontWeight:600, color:'#0F6E56', flexShrink:0 }}>
+              {(s.nome?.[0]||'')+(s.cognome?.[0]||'')}
             </div>
             <div>
-              <div style={{ fontSize: 13, fontWeight: 500, color: '#0f172a' }}>{s.cognome} {s.nome}</div>
-              <div style={{ fontSize: 11, color: '#94a3b8' }}>{s.ruolo}</div>
+              <div style={{ fontSize:13, fontWeight:500, color:'#0f172a' }}>{s.cognome} {s.nome}</div>
+              <div style={{ fontSize:11, color:'#94a3b8' }}>{s.ruolo}</div>
             </div>
           </div>
         ))}
-        <Divider />
+        {q && !staffRes.length && <div style={{ padding:'6px 14px', fontSize:12, color:'#94a3b8', fontStyle:'italic' }}>Nessun risultato</div>}
+        <Sep />
         <Item icon="ti-users" label="Gestisci risorse" sub="Aggiungi, modifica, rimuovi" onClick={() => onNavigate && onNavigate('manageStaff')} />
         <Item icon="ti-table" label="Skill Matrix" sub="Valutazioni e competenze" onClick={() => onNavigate && onNavigate('skills')} />
       </>}
 
       {tipo === 'cliente' && <>
-        {renderSearch('Cerca cliente...', filteredClients, c => (
-          <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 14px', cursor: 'pointer' }}
-            onMouseOver={e => e.currentTarget.style.background = '#f8fafc'}
-            onMouseOut={e => e.currentTarget.style.background = 'transparent'}
-            onClick={() => { if (onNavigate) onNavigate('cliente', c.id); onClose(); }}>
-            <i className="ti ti-building" style={{ fontSize: 14, color: '#185FA5', flexShrink: 0 }} aria-hidden="true" />
-            <div style={{ fontSize: 13, fontWeight: 500, color: '#0f172a' }}>{c.nome_progetto}</div>
+        <SearchBox ph="Cerca cliente..." />
+        {clientRes.map(c => (
+          <div key={c.id} onClick={()=>{ setEntity('cliente'); setSelected(c.id); setSearch(c.nome_progetto); setActiveKpi(null); onClose(); }}
+            style={{ display:'flex', alignItems:'center', gap:8, padding:'7px 14px', cursor:'pointer', borderRadius:6, margin:'0 6px' }}
+            onMouseOver={e=>e.currentTarget.style.background='#f8fafc'}
+            onMouseOut={e=>e.currentTarget.style.background='transparent'}>
+            <i className="ti ti-building" style={{ fontSize:14, color:'#185FA5', flexShrink:0 }} aria-hidden="true" />
+            <div style={{ fontSize:13, fontWeight:500, color:'#0f172a' }}>{c.nome_progetto}</div>
           </div>
         ))}
-        <Divider />
+        {q && !clientRes.length && <div style={{ padding:'6px 14px', fontSize:12, color:'#94a3b8', fontStyle:'italic' }}>Nessun risultato</div>}
+        <Sep />
         <Item icon="ti-settings" label="Gestisci clienti" sub="Anagrafica e configurazione" onClick={() => onGestisciClienti && onGestisciClienti()} />
       </>}
 
       {tipo === 'commessa' && <>
-        {renderSearch('Cerca commessa...', filteredCommesse, co => (
-          <div key={co.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 14px', cursor: 'pointer' }}
-            onMouseOver={e => e.currentTarget.style.background = '#f8fafc'}
-            onMouseOut={e => e.currentTarget.style.background = 'transparent'}
-            onClick={() => { if (onNavigate) onNavigate('commessa', co.clientId, co.id); onClose(); }}>
-            <i className="ti ti-briefcase" style={{ fontSize: 14, color: '#854F0B', flexShrink: 0 }} aria-hidden="true" />
+        <SearchBox ph="Cerca commessa..." />
+        {commRes.map(co => (
+          <div key={co.id} onClick={()=>{ setEntity('commessa'); setSelected(co.id); setSearch(`${co.clientName} › ${co.nome_commessa}`); setActiveKpi(null); onClose(); }}
+            style={{ display:'flex', alignItems:'center', gap:8, padding:'7px 14px', cursor:'pointer', borderRadius:6, margin:'0 6px' }}
+            onMouseOver={e=>e.currentTarget.style.background='#f8fafc'}
+            onMouseOut={e=>e.currentTarget.style.background='transparent'}>
+            <i className="ti ti-briefcase" style={{ fontSize:14, color:'#854F0B', flexShrink:0 }} aria-hidden="true" />
             <div>
-              <div style={{ fontSize: 13, fontWeight: 500, color: '#0f172a' }}>{co.nome_commessa}</div>
-              <div style={{ fontSize: 11, color: '#94a3b8' }}>{co.clientName}</div>
+              <div style={{ fontSize:13, fontWeight:500, color:'#0f172a' }}>{co.nome_commessa}</div>
+              <div style={{ fontSize:11, color:'#94a3b8' }}>{co.clientName}</div>
             </div>
           </div>
         ))}
-        <Divider />
+        {q && !commRes.length && <div style={{ padding:'6px 14px', fontSize:12, color:'#94a3b8', fontStyle:'italic' }}>Nessun risultato</div>}
+        <Sep />
         <Item icon="ti-plus" label="Nuova commessa" sub="Crea e assegna subito" onClick={() => onNuovaCommessaDiretta && onNuovaCommessaDiretta()} />
       </>}
 
       {tipo === 'bolle' && <>
-        <div style={{ padding: '8px 14px 4px' }}>
-          <div style={{ fontSize: 10, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 2 }}>Importa</div>
+        <div style={{ padding:'10px 14px 4px' }}>
+          <div style={{ fontSize:10, fontWeight:600, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'.07em' }}>Cerca</div>
         </div>
-        <Item icon="ti-file-upload" label="Importa Bolle" sub="Da file Excel" onClick={() => onNavigate && onNavigate('importBolle')} />
-        <Item icon="ti-clock" label="Importa Consuntivi" sub="Da file Excel" onClick={() => onNavigate && onNavigate('importConsuntivi')} />
-        <Item icon="ti-building-import" label="Importa Clienti" sub="Da file Excel" onClick={() => onNavigate && onNavigate('importClienti')} />
+        <Item icon="ti-search" label="Cerca bolle" sub="Per codice o descrizione" onClick={() => setEntity && setEntity('dati')} />
+        <Sep />
+        <div style={{ padding:'6px 14px 4px' }}>
+          <div style={{ fontSize:10, fontWeight:600, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'.07em' }}>Importa</div>
+        </div>
+        <Item icon="ti-file-upload" label="Importa bolle" sub="Da file Excel" onClick={() => setEntity && setEntity('dati')} />
+        <Item icon="ti-clock" label="Importa consuntivi" sub="Da file Excel" onClick={() => setEntity && setEntity('dati')} />
+        <Item icon="ti-building-upload" label="Importa clienti" sub="Da file Excel" onClick={() => setEntity && setEntity('dati')} />
       </>}
     </div>
   );
 }
 
 // ── AccordionPersonale — attività/commesse/progetti dell'utente loggato ───────
-function AccordionPersonale({ tipo, userOverride, clients, onOpenProgetto, onOpenCommessa, onOpenCard, onOpenCardModal }) {
+function AccordionPersonale({ tipo, userOverride, clients, onOpenProgetto, onOpenCardModal, onOpenCommessa }) {
   const [open, setOpen] = React.useState(false);
   const [items, setItems] = React.useState([]);
   const [loading, setLoading] = React.useState(false);
@@ -1302,146 +1286,94 @@ function AccordionPersonale({ tipo, userOverride, clients, onOpenProgetto, onOpe
     try {
       if (tipo === 'attivita') {
         const { data: cols } = await supabase.from('workflow_colonne').select('id, nome');
-        const chiuse = new Set((cols || []).filter(c => /complet|annullat|done|chiusa/i.test(c.nome)).map(c => c.id));
-        const { data: att } = await supabase
-          .from('attivita')
-          .select('id, titolo, priorita, colonna_id, commessa_id, colonna:colonna_id(nome)')
+        const chiuse = new Set((cols||[]).filter(c=>/complet|annullat|done|chiusa/i.test(c.nome)).map(c=>c.id));
+        const { data: att } = await supabase.from('attivita')
+          .select('id,titolo,priorita,colonna_id,commessa_id,workflow_id,colonna:colonna_id(nome)')
           .or(`assegnata_a.eq.${myKey},pm.eq.${myKey}`);
-        const aperte = (att || []).filter(a => !chiuse.has(a.colonna_id));
-        const allComm = (clients || []).flatMap(c => (c.commesse || []).map(co => ({ ...co, clientName: c.nome_progetto })));
-        setItems(aperte.map(a => {
-          const comm = allComm.find(co => co.id === a.commessa_id);
-          return { ...a, clientName: comm?.clientName || null, commessaNome: comm?.nome_commessa || null, commessaId: comm?.id || null };
+        const aperte = (att||[]).filter(a=>!chiuse.has(a.colonna_id));
+        const allComm = (clients||[]).flatMap(c=>(c.commesse||[]).map(co=>({...co,clientName:c.nome_progetto,clientId:c.id})));
+        setItems(aperte.map(a=>{
+          const comm = allComm.find(co=>co.id===a.commessa_id);
+          return {...a, clientName:comm?.clientName||null, commessaNome:comm?.nome_commessa||null, clientId:comm?.clientId||null};
         }));
       } else if (tipo === 'commesse') {
-        const allComm = (clients || []).flatMap(c =>
-          (c.commesse || [])
-            .filter(co => co.attiva !== false)
-            .filter(co => co.pm_commessa === myKey || (co.team || []).includes(myKey))
-            .map(co => ({ ...co, clientName: c.nome_progetto, clientId: c.id }))
+        const allComm = (clients||[]).flatMap(c=>
+          (c.commesse||[]).filter(co=>co.attiva!==false)
+            .filter(co=>co.pm_commessa===myKey||(co.team||[]).includes(myKey))
+            .map(co=>({...co,clientName:c.nome_progetto,clientId:c.id}))
         );
         setItems(allComm);
       } else if (tipo === 'progetti') {
-        const allComm = (clients || []).flatMap(c =>
-          (c.commesse || [])
-            .filter(co => co.attiva !== false)
-            .filter(co => co.pm_commessa === myKey || (co.team || []).includes(myKey))
-            .map(co => ({ ...co, clientName: c.nome_progetto }))
+        const allComm = (clients||[]).flatMap(c=>
+          (c.commesse||[]).filter(co=>co.attiva!==false)
+            .filter(co=>co.pm_commessa===myKey||(co.team||[]).includes(myKey))
+            .map(co=>({...co,clientName:c.nome_progetto}))
         );
-        const commIds = allComm.map(co => co.id);
-        if (commIds.length === 0) { setItems([]); setLoaded(true); setLoading(false); return; }
-        // neq chiuso=true per compatibilità Supabase boolean
-        const { data: proj } = await supabase
-          .from('progetti')
-          .select('id, commessa_id, chiuso')
-          .in('commessa_id', commIds)
-          .neq('chiuso', true);
-        setItems((proj || []).map(p => {
-          const comm = allComm.find(co => co.id === p.commessa_id);
-          return { ...p, clientName: comm?.clientName, commessaNome: comm?.nome_commessa };
+        const commIds = allComm.map(co=>co.id);
+        if (!commIds.length) { setItems([]); setLoaded(true); setLoading(false); return; }
+        const { data: proj } = await supabase.from('progetti').select('id,commessa_id,chiuso')
+          .in('commessa_id', commIds).neq('chiuso', true);
+        setItems((proj||[]).map(p=>{
+          const comm = allComm.find(co=>co.id===p.commessa_id);
+          return {...p, clientName:comm?.clientName, commessaNome:comm?.nome_commessa};
         }));
       }
-    } catch(e) { console.error('Accordion load error:', e); }
-    setLoaded(true);
-    setLoading(false);
+    } catch(e) { console.error(e); }
+    setLoaded(true); setLoading(false);
   }, [tipo, myKey, clients, loaded]);
 
-  const handleToggle = () => {
-    if (!open && !loaded) loadItems();
-    setOpen(v => !v);
-  };
+  const cfg = {
+    attivita: { label:'Le attività in carico a te', color:'#185FA5', badgeBg:'#E6F1FB', badgeText:'#0C447C' },
+    commesse: { label:'Le commesse in cui lavori',  color:'#0F6E56', badgeBg:'#E1F5EE', badgeText:'#085041' },
+    progetti: { label:'I progetti in cui lavori',   color:'#854F0B', badgeBg:'#FAEEDA', badgeText:'#633806' },
+  }[tipo];
+  const PC = { alta:{bg:'#FCEBEB',text:'#A32D2D',bar:'#E24B4A'}, media:{bg:'#FAEEDA',text:'#633806',bar:'#BA7517'}, bassa:{bg:'#EAF3DE',text:'#27500A',bar:'#639922'} };
 
   const handleClick = (item) => {
-    if (tipo === 'progetti' && onOpenProgetto) {
-      onOpenProgetto(item.id, item.commessa_id);
-    } else if (tipo === 'commesse' && onOpenCommessa) {
-      onOpenCommessa(item.clientId, item.id);
-    } else if (tipo === 'attivita' && onOpenCardModal) {
-      onOpenCardModal(item);
-    } else if (tipo === 'attivita' && onOpenCard) {
-      onOpenCard(item);
-    }
+    if (tipo === 'attivita' && onOpenCardModal) onOpenCardModal(item);
+    else if (tipo === 'commesse' && onOpenCommessa) onOpenCommessa(item.clientId, item.id);
+    else if (tipo === 'progetti' && onOpenProgetto) onOpenProgetto(item.id, item.commessa_id);
   };
-
-  const PCOLOR = {
-    alta:  { bg: '#FCEBEB', text: '#A32D2D', bar: '#E24B4A' },
-    media: { bg: '#FAEEDA', text: '#633806', bar: '#BA7517' },
-    bassa: { bg: '#EAF3DE', text: '#27500A', bar: '#639922' },
-  };
-
-  const configs = {
-    attivita: { label: 'Le attività in carico a te',  color: '#185FA5', badgeBg: '#E6F1FB', badgeText: '#0C447C' },
-    commesse: { label: 'Le commesse in cui lavori',   color: '#0F6E56', badgeBg: '#E1F5EE', badgeText: '#085041' },
-    progetti: { label: 'I progetti in cui lavori',    color: '#854F0B', badgeBg: '#FAEEDA', badgeText: '#633806' },
-  };
-  const cfg = configs[tipo];
-  const isClickable = tipo !== 'attivita' || true; // tutti cliccabili
 
   return (
-    <div style={{ borderBottom: '1px solid #e8edf2' }}>
-      {/* ── Header ── */}
-      <div onClick={handleToggle}
-        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 0', cursor: 'pointer', userSelect: 'none' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 3, height: 18, borderRadius: 2, background: open ? cfg.color : '#cbd5e1', flexShrink: 0, transition: 'background 0.2s' }} />
-          <span style={{ fontSize: 13, fontWeight: 500, color: open ? '#0f172a' : '#475569', transition: 'color 0.2s' }}>{cfg.label}</span>
+    <div style={{ borderBottom:'1px solid #e8edf2' }}>
+      <div onClick={()=>{ if(!open&&!loaded) loadItems(); setOpen(v=>!v); }}
+        style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'13px 0', cursor:'pointer', userSelect:'none' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+          <div style={{ width:3, height:18, borderRadius:2, background:open?cfg.color:'#cbd5e1', flexShrink:0, transition:'background .2s' }} />
+          <span style={{ fontSize:13, fontWeight:500, color:open?'#0f172a':'#475569' }}>{cfg.label}</span>
           {loaded && items.length > 0 && (
-            <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 20, background: cfg.badgeBg, color: cfg.badgeText, fontWeight: 600 }}>{items.length}</span>
+            <span style={{ fontSize:10, padding:'2px 8px', borderRadius:20, background:cfg.badgeBg, color:cfg.badgeText, fontWeight:600 }}>{items.length}</span>
           )}
         </div>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-          stroke={open ? cfg.color : '#94a3b8'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-          style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s, stroke 0.2s', flexShrink: 0 }}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={open?cfg.color:'#94a3b8'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+          style={{ transform:open?'rotate(180deg)':'none', transition:'transform .2s', flexShrink:0 }}>
           <polyline points="6 9 12 15 18 9"/>
         </svg>
       </div>
-
-      {/* ── Body ── */}
       {open && (
-        <div style={{ paddingBottom: 10 }}>
-          {loading && <div style={{ padding: '8px 0 12px 13px', fontSize: 12, color: '#94a3b8', fontStyle: 'italic' }}>Caricamento...</div>}
-          {!loading && items.length === 0 && <div style={{ padding: '8px 0 12px 13px', fontSize: 12, color: '#94a3b8', fontStyle: 'italic' }}>Nessun elemento</div>}
-          {!loading && items.map((item, i) => {
-            const pc = PCOLOR[item.priorita] || PCOLOR.media;
+        <div style={{ paddingBottom:10 }}>
+          {loading && <div style={{ padding:'8px 0 12px 13px', fontSize:12, color:'#94a3b8', fontStyle:'italic' }}>Caricamento...</div>}
+          {!loading && !items.length && <div style={{ padding:'8px 0 12px 13px', fontSize:12, color:'#94a3b8', fontStyle:'italic' }}>Nessun elemento</div>}
+          {!loading && items.map((item,i) => {
+            const pc = PC[item.priorita]||PC.media;
             return (
-              <div key={item.id || i}
-                onClick={() => handleClick(item)}
-                style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 8px 9px 13px', marginBottom: 2, borderRadius: 8, cursor: 'pointer', transition: 'background 0.12s', background: 'transparent', borderLeft: `2px solid transparent` }}
-                onMouseOver={e => { e.currentTarget.style.background = '#f0f7ff'; e.currentTarget.style.borderLeftColor = cfg.color; }}
-                onMouseOut={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderLeftColor = 'transparent'; }}>
-
-                {/* Indicatore priorità / tipo */}
-                {tipo === 'attivita' && (
-                  <div style={{ width: 4, height: 32, borderRadius: 2, background: pc.bar, flexShrink: 0 }} />
-                )}
-                {tipo !== 'attivita' && (
-                  <div style={{ width: 4, height: 32, borderRadius: 2, background: cfg.color + '55', flexShrink: 0 }} />
-                )}
-
-                {/* Testo */}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 500, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {tipo === 'attivita' ? item.titolo
-                      : tipo === 'commesse' ? item.nome_commessa
-                      : item.commessaNome || '—'}
+              <div key={item.id||i} onClick={()=>handleClick(item)}
+                style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 8px 9px 13px', borderRadius:8, cursor:'pointer', borderLeft:'2px solid transparent', transition:'all .12s' }}
+                onMouseOver={e=>{e.currentTarget.style.background='#f0f7ff';e.currentTarget.style.borderLeftColor=cfg.color;}}
+                onMouseOut={e=>{e.currentTarget.style.background='transparent';e.currentTarget.style.borderLeftColor='transparent';}}>
+                <div style={{ width:4, height:32, borderRadius:2, background:tipo==='attivita'?pc.bar:cfg.color+'55', flexShrink:0 }} />
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ fontSize:13, fontWeight:500, color:'#0f172a', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                    {tipo==='attivita'?item.titolo : tipo==='commesse'?item.nome_commessa : `${item.commessaNome} — ${item.clientName}`}
                   </div>
-                  <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {tipo === 'attivita' ? (item.clientName || item.commessaNome || '—')
-                      : tipo === 'commesse' ? item.clientName
-                      : item.clientName}
+                  <div style={{ fontSize:11, color:'#94a3b8', marginTop:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                    {tipo==='attivita'?(item.clientName||item.commessaNome||'—') : tipo==='commesse'?item.clientName : item.clientName}
                   </div>
                 </div>
-
-                {/* Badge destra */}
-                {tipo === 'attivita' && item.priorita && (
-                  <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 4, background: pc.bg, color: pc.text, fontWeight: 600, flexShrink: 0, border: `0.5px solid ${pc.text}33` }}>{item.priorita}</span>
-                )}
-                {tipo === 'commesse' && (
-                  <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 4, background: item.pm_commessa === myKey ? '#E6F1FB' : '#f1f5f9', color: item.pm_commessa === myKey ? '#0C447C' : '#64748b', fontWeight: 600, flexShrink: 0 }}>
-                    {item.pm_commessa === myKey ? 'PM' : 'team'}
-                  </span>
-                )}
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="m9 18 6-6-6-6"/></svg>
+                {tipo==='attivita'&&item.priorita&&<span style={{ fontSize:10, padding:'2px 8px', borderRadius:4, background:pc.bg, color:pc.text, fontWeight:600, flexShrink:0 }}>{item.priorita}</span>}
+                {tipo==='commesse'&&<span style={{ fontSize:10, padding:'2px 8px', borderRadius:4, background:item.pm_commessa===myKey?'#E6F1FB':'#f1f5f9', color:item.pm_commessa===myKey?'#0C447C':'#64748b', fontWeight:600, flexShrink:0 }}>{item.pm_commessa===myKey?'PM':'team'}</span>}
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink:0 }}><path d="m9 18 6-6-6-6"/></svg>
               </div>
             );
           })}
@@ -1450,7 +1382,6 @@ function AccordionPersonale({ tipo, userOverride, clients, onOpenProgetto, onOpe
     </div>
   );
 }
-
 
 export function KPIView({ staff, matrix, clients, assignments, skillsConfig, currentMonths, trainingCells, onOpenProgetto, userOverride, isAdmin, onNuovaCommessa, onNavigate, onGestisciClienti, onNuovaCommessaDiretta }) {
   const [entity, setEntity] = useState(userOverride?.defaultEntity || null);
@@ -1464,9 +1395,8 @@ export function KPIView({ staff, matrix, clients, assignments, skillsConfig, cur
   const [kpi, setKpi] = useState(null);
   const [kpiLoading, setKpiLoading] = useState(true);
   const [activeKpi, setActiveKpi] = useState(null);
-  const [previewCard, setPreviewCard] = useState(null);
-  const [editCard, setEditCard] = useState(null);           // CardModal editing
-  const [openCommessaTarget, setOpenCommessaTarget] = useState(null); // { clientId, commessaId }
+  const [editCard, setEditCard] = useState(null);
+  const [openCommessaTarget, setOpenCommessaTarget] = useState(null);
 
   const RUOLI_ORDER_KPI = ['PM', 'Project Manager', 'Consulente', 'Programmatore', 'Analista'];
 
@@ -1546,15 +1476,7 @@ export function KPIView({ staff, matrix, clients, assignments, skillsConfig, cur
         <div style={{ padding: isMobile ? '20px 16px' : '28px 32px' }}>
           <div style={{ fontSize: '11px', color: '#94a3b8', letterSpacing: '.1em', textTransform: 'uppercase', marginBottom: '8px' }}>ZCS · Portale Delivery</div>
           <div style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: 500, color: '#0f172a', marginBottom: '4px' }}>
-            {(() => {
-              const u = userOverride;
-              const nome = u?.nome || '';
-              const cognome = u?.cognome || '';
-              const vocale = /^[aeiouAEIOU]/.test(nome);
-              const genere = u?.genere; // 'M' o 'F' se disponibile, altrimenti default maschile
-              const benv = genere === 'F' ? 'Benvenuta' : 'Benvenuto';
-              return `${benv}, ${nome}${cognome ? ' ' + cognome : ''}`.trim() || 'Benvenuto';
-            })()}
+            Benvenuto{userOverride?.genere === 'F' ? 'a' : ''}, {userOverride ? `${userOverride.nome} ${userOverride.cognome}`.trim() : staff.find(s => s.is_admin)?.nome || 'Admin'}
           </div>
           <div style={{ fontSize: '13px', color: '#64748b' }}>
             {new Date().toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} · {userOverride?.ruolo || 'Operation Manager'}
@@ -1579,83 +1501,68 @@ export function KPIView({ staff, matrix, clients, assignments, skillsConfig, cur
         </div>
       </div>
 
-      {kpi && (() => {
-        const kpiCards = [
-          { key: 'risorsa',  color: '#0F6E56', label: 'Risorse',         num: kpi.nRisorse,        rows: RUOLI_ORDER_KPI.filter(r => kpi.ruoliCount[r]).map(r => [r, kpi.ruoliCount[r], '#0F6E56']).concat(Object.entries(kpi.ruoliCount).filter(([r]) => !RUOLI_ORDER_KPI.includes(r)).map(([r,c]) => [r, c, '#0F6E56'])) },
-          { key: 'cliente',  color: '#185FA5', label: 'Clienti attivi',  num: kpi.nClientiAttivi,  rows: Object.entries(kpi.prodottiCount).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([p,c]) => [p, c, '#185FA5']) },
-          { key: 'commessa', color: '#854F0B', label: 'Commesse aperte', num: kpi.nCommesseAttive, rows: [['Sviluppo aperte', kpi.nAttivitaSviluppoAperte, '#854F0B']] },
-          { key: 'bolle',    color: '#534AB7', label: 'Bolle',           num: kpi.nBolle,          rows: [['Previsto', Math.round(kpi.totGgPrevisti)+'gg', '#534AB7'], ['Consuntivato', Math.round(kpi.totGgFatti)+'gg', '#534AB7'], ['Residuo', Math.round(kpi.residuo)+'gg', kpi.residuo >= 0 ? '#0F6E56' : '#dc2626'], ...(kpi.efficacia != null ? [['Efficacia', Math.round(kpi.efficacia)+'%', kpi.efficacia >= 75 ? '#0F6E56' : kpi.efficacia >= 60 ? '#854F0B' : '#dc2626']] : [])] },
-        ];
-        return (
-          <div style={{ padding: isMobile ? '16px' : '24px 32px 0' }}>
-            {/* ── RIGA SUPERIORE: cerchio + 4 cubi ── */}
-            <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr 1fr 1fr 1fr', gap: '12px', alignItems: 'stretch' }}>
-              {/* Cerchio */}
-              <div onClick={() => onNuovaCommessa && onNuovaCommessa()}
-                style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, cursor: 'pointer' }}>
-                <div style={{ width: 56, height: 56, borderRadius: '50%', background: '#001d47', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.18s', boxShadow: '0 4px 18px rgba(0,29,71,0.35)' }}
-                  onMouseOver={e => { e.currentTarget.style.background = '#0d3470'; e.currentTarget.style.boxShadow = '0 6px 24px rgba(0,29,71,0.45)'; }}
-                  onMouseOut={e => { e.currentTarget.style.background = '#001d47'; e.currentTarget.style.boxShadow = '0 4px 18px rgba(0,29,71,0.35)'; }}>
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                </div>
-                <div style={{ fontSize: 11, fontWeight: 500, color: '#001d47', textAlign: 'center', whiteSpace: 'nowrap' }}>Nuova attività</div>
-              </div>
-              {/* 4 cubi KPI con popup */}
-              {kpiCards.map(card => (
-                <div key={card.key} style={{ position: 'relative' }}>
-                  <div onClick={() => setActiveKpi(activeKpi === card.key ? null : card.key)}
-                    style={{ background: '#fff', border: activeKpi === card.key ? `1.5px solid ${card.color}` : '1px solid #e2e8f0', borderRadius: 16, padding: '18px 20px', boxShadow: activeKpi === card.key ? '0 8px 32px rgba(0,0,0,0.13)' : '0 2px 16px rgba(0,0,0,0.07)', position: 'relative', overflow: 'hidden', cursor: 'pointer', transition: 'all 0.18s', display: 'flex', flexDirection: 'column', minHeight: 160 }}>
-                    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: card.color, borderRadius: '16px 16px 0 0' }} />
-                    <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>{card.label}</div>
-                    <div style={{ fontSize: 32, fontWeight: 700, color: '#0f172a', lineHeight: 1, marginBottom: 12 }}>{card.num}</div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 5, borderTop: '1px solid #f1f5f9', paddingTop: 10, flex: 1 }}>
-                      {card.rows.map(([lbl, val, col], i) => (
-                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ fontSize: 11, color: '#64748b' }}>{lbl}</span>
-                          <span style={{ fontSize: 12, fontWeight: 700, color: col }}>{val}</span>
-                        </div>
-                      ))}
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 6, borderTop: '1px solid #f1f5f9', marginTop: 4 }}>
-                      <svg style={{ animation: 'kpiBounce 1.8s ease-in-out infinite', opacity: activeKpi === card.key ? 1 : 0.7 }} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={activeKpi === card.key ? card.color : '#94a3b8'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-                    </div>
-                  </div>
-                  {/* Popup contestuale */}
-                  {activeKpi === card.key && (
-                    <KpiPopup
-                      tipo={card.key}
-                      color={card.color}
-                      onClose={() => setActiveKpi(null)}
-                      staff={staff}
-                      clients={clients}
-                      onNavigate={onNavigate}
-                      onGestisciClienti={onGestisciClienti}
-                      onNuovaCommessa={onNuovaCommessa}
-                      onNuovaCommessaDiretta={onNuovaCommessaDiretta}
-                      onImportExcel={onImportExcel}
-                    />
-                  )}
-                </div>
-              ))}
+      {kpi && (
+        <div style={{ padding: isMobile ? '16px 16px 0' : '24px 32px 0', display: 'grid', gridTemplateColumns: '120px 1fr 1fr 1fr 1fr', gap: '12px', alignItems: 'stretch' }}>
+          <div onClick={() => onNuovaCommessa && onNuovaCommessa()}
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, cursor: 'pointer' }}>
+            <div style={{ width: 56, height: 56, borderRadius: '50%', background: '#001d47', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.18s', boxShadow: '0 4px 18px rgba(0,29,71,0.35)' }}
+              onMouseOver={e => { e.currentTarget.style.background = '#0d3470'; e.currentTarget.style.boxShadow = '0 6px 24px rgba(0,29,71,0.45)'; }} onMouseOut={e => { e.currentTarget.style.background = '#001d47'; e.currentTarget.style.boxShadow = '0 4px 18px rgba(0,29,71,0.35)'; }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             </div>
-
-            {/* ── RIGA INFERIORE: accordion personali ── */}
-            <div style={{ marginTop: 28, maxWidth: 520 }}>
-              <AccordionPersonale tipo="attivita" userOverride={userOverride} clients={clients} onOpenProgetto={onOpenProgetto}
-                onOpenCard={(card) => setPreviewCard(card)}
-                onOpenCardModal={(card) => setEditCard(card)} />
-              <AccordionPersonale tipo="commesse" userOverride={userOverride} clients={clients} onOpenProgetto={onOpenProgetto}
-                onOpenCommessa={(clientId, commessaId) => setOpenCommessaTarget({ clientId, commessaId })} />
-              <AccordionPersonale tipo="progetti" userOverride={userOverride} clients={clients} onOpenProgetto={onOpenProgetto} />
-            </div>
+            <div style={{ fontSize: 11, fontWeight: 500, color: '#001d47', textAlign: 'center', whiteSpace: 'nowrap' }}>Nuova attività</div>
           </div>
-        );
-      })()}
+          {[
+            { key: 'risorsa', color: '#0F6E56', label: 'Risorse', num: kpi.nRisorse, rows: RUOLI_ORDER_KPI.filter(r => kpi.ruoliCount[r]).map(r => [r, kpi.ruoliCount[r], '#0F6E56']).concat(Object.entries(kpi.ruoliCount).filter(([r]) => !RUOLI_ORDER_KPI.includes(r)).map(([r,c]) => [r, c, '#0F6E56'])) },
+            { key: 'cliente', color: '#185FA5', label: 'Clienti attivi', num: kpi.nClientiAttivi, rows: Object.entries(kpi.prodottiCount).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([p,c]) => [p, c, '#185FA5']) },
+            { key: 'commessa', color: '#854F0B', label: 'Commesse aperte', num: kpi.nCommesseAttive, rows: [['Sviluppo aperte', kpi.nAttivitaSviluppoAperte, '#854F0B']] },
+            { key: 'bolle', color: '#534AB7', label: 'Bolle', num: kpi.nBolle, rows: [['Previsto', Math.round(kpi.totGgPrevisti)+'gg', '#534AB7'], ['Consuntivato', Math.round(kpi.totGgFatti)+'gg', '#534AB7'], ['Residuo', Math.round(kpi.residuo)+'gg', kpi.residuo >= 0 ? '#0F6E56' : '#dc2626'], ...(kpi.efficacia != null ? [['Efficacia', Math.round(kpi.efficacia)+'%', kpi.efficacia >= 75 ? '#0F6E56' : kpi.efficacia >= 60 ? '#854F0B' : '#dc2626']] : [])] },
+          ].map(card => (
+            <div key={card.key} style={{ position: 'relative' }}>
+              <div onClick={() => setActiveKpi(activeKpi === card.key ? null : card.key)}
+                style={{ background: '#fff', border: activeKpi === card.key ? '1.5px solid ' + card.color : '1px solid #e2e8f0', borderRadius: 16, padding: '18px 20px', boxShadow: activeKpi === card.key ? '0 8px 32px rgba(0,0,0,0.13)' : '0 2px 16px rgba(0,0,0,0.07), 0 1px 4px rgba(0,0,0,0.04)', position: 'relative', overflow: 'hidden', cursor: 'pointer', transition: 'border-color 0.18s', display: 'flex', flexDirection: 'column', minHeight: 160 }}>
+                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: card.color, borderRadius: '16px 16px 0 0' }} />
+                <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>{card.label}</div>
+                <div style={{ fontSize: 32, fontWeight: 700, color: '#0f172a', lineHeight: 1, marginBottom: 12 }}>{card.num}</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 5, borderTop: '1px solid #f1f5f9', paddingTop: 10, flex: 1 }}>
+                  {card.rows.map(([lbl, val, col], i) => (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: 11, color: '#64748b' }}>{lbl}</span>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: col }}>{val}</span>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 6, borderTop: '1px solid #f1f5f9', marginTop: 4 }}>
+                  <svg style={{ animation: 'kpiBounce 1.8s ease-in-out infinite', opacity: activeKpi === card.key ? 1 : 0.7 }} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={activeKpi === card.key ? card.color : '#94a3b8'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                </div>
+              </div>
+              {/* Popup contestuale vicino al cubo */}
+              {activeKpi === card.key && (
+                <KpiPopup tipo={card.key} color={card.color} onClose={() => setActiveKpi(null)}
+                  staff={staff} clients={clients}
+                  onNavigate={onNavigate} onGestisciClienti={onGestisciClienti}
+                  onNuovaCommessaDiretta={onNuovaCommessaDiretta}
+                  setEntity={setEntity} setSelected={setSelected} setSearch={setSearch} setActiveKpi={setActiveKpi}
+                />
+              )}
+            </div>
+          ))}
+        </div>
+      )}
 
-      {kpi && activeKpi && (
-        <KpiPanel activeKpi={activeKpi} onClose={() => setActiveKpi(null)} isMobile={isMobile}
-          onNavigate={onNavigate} onGestisciClienti={onGestisciClienti} onNuovaCommessa={onNuovaCommessa} onNuovaCommessaDiretta={onNuovaCommessaDiretta}
-          setEntity={setEntity} setActiveKpi={setActiveKpi} setSelected={setSelected} setSearch={setSearch} />
+
+
+      {/* ── Accordion personali ── */}
+      {userOverride && (
+        <div style={{ padding: isMobile ? '0 16px' : '20px 32px 0', maxWidth: 480 }}>
+          <AccordionPersonale tipo="attivita" userOverride={userOverride} clients={clients}
+            onOpenProgetto={onOpenProgetto}
+            onOpenCardModal={(card) => setEditCard(card)} />
+          <AccordionPersonale tipo="commesse" userOverride={userOverride} clients={clients}
+            onOpenProgetto={onOpenProgetto}
+            onOpenCommessa={(clientId, commessaId) => setOpenCommessaTarget({ clientId, commessaId })} />
+          <AccordionPersonale tipo="progetti" userOverride={userOverride} clients={clients}
+            onOpenProgetto={onOpenProgetto} />
+        </div>
       )}
 
       <div style={{ padding: isMobile ? '16px 16px 24px' : '32px 32px 24px' }}>
@@ -2043,34 +1950,20 @@ export function RisorsaDetail({ selected, staff, matrix, clients, assignments, s
           </div>
         </div>
       )}
-      {previewCard && (
-        <CardPreviewModal
-          card={previewCard}
-          colonnaNome={previewCard.colonna?.nome}
-          onClose={() => setPreviewCard(null)}
-        />
-      )}
       {editCard && (
         <CardModal
-          card={editCard}
-          colonne={[]}
-          workflowId={editCard.workflow_id}
-          staff={staff}
-          clients={clients}
-          transizioni={[]}
-          isAdmin={true}
+          card={editCard} colonne={[]} workflowId={editCard.workflow_id}
+          staff={staff} clients={clients} transizioni={[]} isAdmin={true}
           onClose={() => setEditCard(null)}
           onDelete={async () => { await supabase.from('attivita').delete().eq('id', editCard.id); setEditCard(null); }}
         />
       )}
       {openCommessaTarget && (
         <ProjectModal
-          staff={staff}
-          clients={clients}
-          matrix={{}}
+          staff={staff} clients={clients} matrix={{}}
           targetedEdit={openCommessaTarget}
-          onClose={() => { setOpenCommessaTarget(null); }}
-          onOpenProgetto={(progettoId, commessaId) => { onOpenProgetto && onOpenProgetto(progettoId, commessaId); setOpenCommessaTarget(null); }}
+          onClose={() => setOpenCommessaTarget(null)}
+          onOpenProgetto={(pid, cid) => { onOpenProgetto && onOpenProgetto(pid, cid); setOpenCommessaTarget(null); }}
         />
       )}
     </div>
