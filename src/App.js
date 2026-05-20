@@ -216,6 +216,7 @@ export default function App() {
   const [showManageClientsModal, setShowManageClientsModal] = useState(false);
   const [showImportExcelModal, setShowImportExcelModal] = useState(false);
   const [showProjectModal, setShowProjectModal] = useState(false);
+  const [homeEditCard, setHomeEditCard] = useState(null);
   const [showEditClientModal, setShowEditClientModal] = useState(false);
   const [selectedClientEdit, setSelectedClientEdit] = useState(null);
   const [progettoAperto, setProgettoAperto] = useState(null);
@@ -1126,7 +1127,9 @@ export default function App() {
           onNuovaCommessa={() => setShowNuovaAttivitaWizard(true)}
           onNuovaCommessaDiretta={() => setShowProjectModalFromWizard(true)}
           onNavigate={(v) => { if (v === 'skills') setView('skills'); else if (v === 'manageStaff') setShowManageStaff(true); }}
-          onGestisciClienti={() => setShowManageClientsModal(true)} />
+          onGestisciClienti={() => setShowManageClientsModal(true)}
+          onOpenCard={(card) => setHomeEditCard(card)}
+          onOpenCommessa={(clientId, commessaId) => openCommessaEdit(clientId, commessaId)} />
 
       ) : view === 'homeUser' ? (
         <HomeUser currentStaff={currentStaff} staff={staff} matrix={matrix} clients={visibleClients}
@@ -1681,6 +1684,12 @@ export default function App() {
           onEdit={(c) => { const fresh = clients.find(x => x.id === c.id) || c; setSelectedClientEdit(fresh); setShowEditClientModal(true); setShowManageClientsModal(false); }}
           onClose={() => { setShowManageClientsModal(false); loadAllDataSilent(); }}
         />
+      )}
+      {homeEditCard && (
+        <CardModal card={homeEditCard} colonne={[]} workflowId={homeEditCard.workflow_id}
+          staff={staff} clients={visibleClients} transizioni={[]} isAdmin={isAdmin}
+          onClose={() => setHomeEditCard(null)}
+          onDelete={async () => { setHomeEditCard(null); }} />
       )}
       {showProjectModal && (
         <ProjectModal staff={staff} clients={clients} matrix={matrix} targetedEdit={targetedProjectEdit}
