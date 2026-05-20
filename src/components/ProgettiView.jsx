@@ -208,6 +208,110 @@ export function ProgettoView({ progettoId, commessaId, clients, staff, currentUs
 
   const loadProgetto = async () => {
     setLoading(true);
+
+    // ── Sincronizza attività workflow della commessa → progetto_task ──────────
+    // Carica attività workflow collegate alla commessa
+    const { data: attWf } = await supabase
+      .from('attivita')
+      .select('id, titolo, priorita, stato, data_rilascio, data_richiesta, in_carico_a, colonna:colonna_id(nome)')
+      .eq('commessa_id', commessaId);
+
+    if (attWf && attWf.length > 0) {
+      // Carica i task sviluppo già presenti in progetto_task (quelli con attivita_id)
+      const { data: existingLinks } = await supabase
+        .from('progetto_task')
+        .select('attivita_id')
+        .eq('progetto_id', progettoId)
+        .not('attivita_id', 'is', null);
+
+      const linkedIds = new Set((existingLinks || []).map(t => t.attivita_id));
+
+      // Trova o crea la riga SVILUPPO reparto
+      const { data: repartoSvil } = await supabase
+        .from('progetto_task')
+        .select('id, task_id_display, ordine')
+        .eq('progetto_id', progettoId)
+        .eq('reparto', 'SVILUPPO')
+        .is('attivita', null)
+        .limit(1);
+
+      let repartoSvilId = repartoSvil?.[0]?.task_id_display;
+      let nextOrdine = repartoSvil?.[0]?.ordine || 9000;
+
+      // Se il reparto SVILUPPO non esiste, crealo
+      if (!repartoSvil || repartoSvil.length === 0) {
+        const { data: allTasks } = await supabase
+          .from('progetto_task')
+          .select('task_id_display, ordine')
+          .eq('progetto_id', progettoId)
+          .order('ordine', { ascending: false })
+          .limit(1);
+        const lastOrdine = allTasks?.[0]?.ordine || 900;
+        const lastId = parseInt(allTasks?.[0]?.task_id_display?.split('.')[0] || '0') || 0;
+        const newId = String(lastId + 1);
+        nextOrdine = lastOrdine + 100;
+        await supabase.from('progetto_task').insert({
+          progetto_id: progettoId,
+          task_id_display: newId,
+          reparto: 'SVILUPPO',
+          categoria: null,
+          attivita: null,
+          stato: null,
+          ordine: nextOrdine,
+        });
+        repartoSvilId = newId;
+        nextOrdine += 10;
+      } else {
+        // Conta i task figli esistenti per calcolare il prossimo ordine
+        const { data: figli } = await supabase
+          .from('progetto_task')
+          .select('ordine')
+          .eq('progetto_id', progettoId)
+          .eq('reparto', 'SVILUPPO')
+          .not('attivita', 'is', null)
+          .order('ordine', { ascending: false })
+          .limit(1);
+        nextOrdine = (figli?.[0]?.ordine || nextOrdine) + 10;
+      }
+
+      // Inserisci le attività workflow mancanti
+      const nuoveAttivita = attWf.filter(a => !linkedIds.has(a.id));
+      if (nuoveAttivita.length > 0) {
+        const { data: figliCount } = await supabase
+          .from('progetto_task')
+          .select('task_id_display')
+          .eq('progetto_id', progettoId)
+          .eq('reparto', 'SVILUPPO')
+          .not('attivita', 'is', null);
+        let counter = (figliCount?.length || 0) + 1;
+
+        const toInsert = nuoveAttivita.map((a, i) => ({
+          progetto_id: progettoId,
+          task_id_display: `${repartoSvilId}.${counter + i}`,
+          reparto: 'SVILUPPO',
+          categoria: 'Sviluppo',
+          attivita: a.titolo,
+          priorita: a.priorita || 'media',
+          stato: (() => {
+            const col = a.colonna?.nome || '';
+            if (/complet|done/i.test(col)) return 'Chiusa';
+            if (/corso|progress/i.test(col)) return 'In Corso';
+            if (/collaudo|test/i.test(col)) return 'Da collaudare';
+            return 'Da Iniziare';
+          })(),
+          note: null,
+          in_carico_a: a.in_carico_a || 'ZCS',
+          previsto: a.data_rilascio || null,
+          collaudo: null,
+          step: 1,
+          ordine: nextOrdine + i * 10,
+          attivita_id: a.id,
+        }));
+        await supabase.from('progetto_task').insert(toInsert);
+      }
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
     const { data: taskData } = await supabase.from('progetto_task').select('*').eq('progetto_id', progettoId).order('ordine');
     setTasks(taskData || []);
     const { data: progData } = await supabase.from('progetti').select('chiuso').eq('id', progettoId).single();
@@ -247,7 +351,9 @@ export function ProgettoView({ progettoId, commessaId, clients, staff, currentUs
       note: task.note || null,
       in_carico_a: task.in_carico_a || 'ZCS',
       previsto: task.previsto || null,
-      collaudo: task.collaudo || null,
+      collaudo: task.stato === 'Chiusa'
+        ? (task.collaudo || new Date().toISOString().slice(0, 10))
+        : null,
       step: task.step || 1,
       parent_id: task.parent_id || null,
       ordine: task.ordine || 0,
@@ -286,7 +392,12 @@ export function ProgettoView({ progettoId, commessaId, clients, staff, currentUs
   const STATO_COL = { ...STATO_COLORS };
   const tdStyle = { padding: '8px 10px', fontSize: '12px', borderBottom: '1px solid #f1f5f9', verticalAlign: 'middle' };
 
-  const tasksByReparto = reparti.map(rep => ({
+  // SVILUPPO sempre in fondo, separato dalla WBS normale
+  const repartiNormali = reparti.filter(r => r !== 'SVILUPPO');
+  const hasSviluppoReparto = reparti.includes('SVILUPPO');
+  const repartiOrdinati = [...repartiNormali, ...(hasSviluppoReparto ? ['SVILUPPO'] : [])];
+
+  const tasksByReparto = repartiOrdinati.map(rep => ({
     reparto: rep,
     repartoTask: tasks.find(t => isReparto(t) && t.reparto === rep),
     children: tasks.filter(t => !isReparto(t) && t.reparto === rep),
@@ -300,7 +411,7 @@ export function ProgettoView({ progettoId, commessaId, clients, staff, currentUs
       // Filtri colonna
       for (const [col, val] of Object.entries(colFilters)) {
         if (!val || (Array.isArray(val) ? val.length === 0 : val === '')) continue;
-        const fieldMap = { 'Categoria': 'categoria', 'Priorità': 'priorita', 'Stato': 'stato', 'In carico a': 'in_carico_a', 'Step': 'step', 'Attività': 'attivita', 'Note': 'note', 'Previsto': 'previsto', 'Collaudo': 'collaudo' };
+        const fieldMap = { 'Categoria': 'categoria', 'Priorità': 'priorita', 'Stato': 'stato', 'In carico a': 'in_carico_a', 'Step': 'step', 'Attività': 'attivita', 'Note': 'note', 'Previsto': 'previsto', 'Chiusa il': 'collaudo' };
         const field = fieldMap[col];
         if (!field) continue;
         const cellVal = (t[field] || '').toString().toLowerCase();
@@ -364,7 +475,7 @@ export function ProgettoView({ progettoId, commessaId, clients, staff, currentUs
                   {expandAll ? '▼' : '▶'}
                 </button>
                 <button onClick={() => {
-                  const rows = [['ID','Categoria','Attività','Priorità','Stato','Note','In carico a','Previsto','Collaudo','Step']];
+                  const rows = [['ID','Categoria','Attività','Priorità','Stato','Note','In carico a','Previsto','Chiusa il','Step']];
                   tasks.filter(t => !isReparto(t)).forEach(t => {
                     rows.push([
                       t.task_id_display || '', t.categoria || '', t.attivita || '',
@@ -422,11 +533,11 @@ export function ProgettoView({ progettoId, commessaId, clients, staff, currentUs
           <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', fontSize: '12px' }}>
             <thead>
               <tr style={{ background: '#f8fafc' }}>
-                {['ID', 'Categoria', 'Attività', 'Priorità', 'Stato', 'Note', 'In carico a', 'Previsto', 'Collaudo', 'Step', ''].map(h => {
+                {['ID', 'Categoria', 'Attività', 'Priorità', 'Stato', 'Note', 'In carico a', 'Previsto', 'Chiusa il', 'Step', ''].map(h => {
                   const DISCRETE = ['Categoria', 'Priorità', 'Stato', 'In carico a', 'Step'];
                   const TEXT = ['Attività', 'Note', 'Previsto', 'Collaudo'];
                   const filterable = DISCRETE.includes(h) || TEXT.includes(h);
-                  const fieldMap = { 'Categoria': 'categoria', 'Priorità': 'priorita', 'Stato': 'stato', 'In carico a': 'in_carico_a', 'Step': 'step', 'Attività': 'attivita', 'Note': 'note', 'Previsto': 'previsto', 'Collaudo': 'collaudo' };
+                  const fieldMap = { 'Categoria': 'categoria', 'Priorità': 'priorita', 'Stato': 'stato', 'In carico a': 'in_carico_a', 'Step': 'step', 'Attività': 'attivita', 'Note': 'note', 'Previsto': 'previsto', 'Chiusa il': 'collaudo' };
                   const field = fieldMap[h];
                   const activeVals = colFilters[h];
                   const hasFilter = activeVals && (Array.isArray(activeVals) ? activeVals.length > 0 : activeVals !== '');
@@ -1514,7 +1625,7 @@ export function ProgettoGantt({ tasks, reparti, isReparto, onTaskClick, commessa
         </button>
         <div style={{ marginLeft: 'auto', display: 'flex', gap: '16px', fontSize: '11px', color: '#64748b', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><div style={{ width: 12, height: 12, borderRadius: '3px', background: '#1e40af' }} /> Previsto</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><div style={{ width: 12, height: 12, borderRadius: '3px', background: '#22c55e' }} /> Collaudo</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><div style={{ width: 12, height: 12, borderRadius: '3px', background: '#22c55e' }} /> Chiusa il</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><div style={{ width: 2, height: 14, background: '#ef4444' }} /> Oggi</div>
         </div>
       </div>
@@ -1597,16 +1708,55 @@ export function ProgettoGantt({ tasks, reparti, isReparto, onTaskClick, commessa
                   const isMon = d.getDay() === 1;
                   const isToday = di === todayIdx;
                   let dot = null;
+                  // ── Linea orizzontale sul modulo (da prima a ultima data) ──
+                  if (row.type === 'reparto') {
+                    const repartoTasks = tasks.filter(t => !isReparto(t) && t.reparto === row.reparto);
+                    const taskDates = repartoTasks.flatMap(t => [
+                      t.previsto ? dayIndex(t.previsto) : -1,
+                      t.collaudo ? dayIndex(t.collaudo) : -1,
+                    ]).filter(idx => idx >= 0);
+                    if (taskDates.length > 0) {
+                      const minIdx = Math.min(...taskDates);
+                      const maxIdx = Math.max(...taskDates);
+                      if (di >= minIdx && di <= maxIdx) {
+                        const isFirst = di === minIdx;
+                        const isLast = di === maxIdx;
+                        dot = (
+                          <div style={{
+                            position: 'absolute', top: '50%', transform: 'translateY(-50%)',
+                            left: isFirst ? '50%' : 0,
+                            right: isLast ? '50%' : 0,
+                            height: '2px',
+                            background: 'linear-gradient(90deg, #cbd5e1, #94a3b8)',
+                            borderRadius: isFirst ? '2px 0 0 2px' : isLast ? '0 2px 2px 0' : '0',
+                            opacity: 0.55,
+                            pointerEvents: 'none',
+                          }} />
+                        );
+                        return (
+                          <div key={di} style={{ width: DAY_W, flexShrink: 0, height: '100%', background: isToday ? 'rgba(0,84,166,0.04)' : isWeekend ? 'rgba(240,242,245,0.5)' : 'transparent', borderRight: isMon ? '1px solid #e2e8f0' : '0.5px solid #f1f5f9', position: 'relative' }}>
+                            {dot}
+                          </div>
+                        );
+                      }
+                    }
+                  }
                   if (row.type === 'task') {
-                    const pIdx = dayIndex(row.task.previsto);
-                    const cIdx = dayIndex(row.task.collaudo);
-                    const both = pIdx === cIdx && pIdx >= 0 && di === pIdx;
-                    if (both) {
-                      dot = <div style={{ display: 'flex', gap: '2px' }}><div style={{ width: 9, height: 14, borderRadius: '2px', background: '#1e40af' }} /><div style={{ width: 9, height: 14, borderRadius: '2px', background: '#22c55e' }} /></div>;
-                    } else if (di === pIdx) {
-                      dot = <div style={{ width: 14, height: 14, borderRadius: '3px', background: '#1e40af', boxShadow: '0 1px 3px rgba(30,64,175,0.5)' }} />;
-                    } else if (di === cIdx) {
-                      dot = <div style={{ width: 14, height: 14, borderRadius: '3px', background: '#22c55e', boxShadow: '0 1px 3px rgba(34,197,94,0.5)' }} />;
+                    const t = row.task;
+                    const isChiusa = t.stato === 'Chiusa';
+                    const pIdx = dayIndex(t.previsto);
+                    const cIdx = dayIndex(t.collaudo); // data chiusura effettiva
+                    const prevDate = t.previsto ? new Date(t.previsto) : null;
+                    const inRitardo = !isChiusa && prevDate && prevDate < today;
+
+                    if (isChiusa && cIdx >= 0 && di === cIdx) {
+                      // Verde: chiusa — mostra la data di chiusura effettiva
+                      dot = <div title={`Chiusa il ${t.collaudo?.split('-').reverse().join('/')}`} style={{ width: 14, height: 14, borderRadius: '3px', background: '#16a34a', boxShadow: '0 1px 3px rgba(22,163,74,0.5)' }} />;
+                    } else if (!isChiusa && di === pIdx) {
+                      // Giallo se in ritardo, blu se nei tempi
+                      const color = inRitardo ? '#f59e0b' : '#1e40af';
+                      const shadow = inRitardo ? 'rgba(245,158,11,0.5)' : 'rgba(30,64,175,0.5)';
+                      dot = <div title={inRitardo ? `In ritardo — previsto ${t.previsto?.split('-').reverse().join('/')}` : `Previsto ${t.previsto?.split('-').reverse().join('/')}`} style={{ width: 14, height: 14, borderRadius: '3px', background: color, boxShadow: `0 1px 3px ${shadow}` }} />;
                     }
                   }
                   return (
@@ -2113,7 +2263,7 @@ export function TaskModal({ task, reparti, defaultReparto, defaultParentId, onSa
           </div>
           <div className="form-group" style={{ marginBottom: 0 }}>
             <label>Categoria</label>
-            <SelectDropdown options={[{ value: '', label: '— nessuna —' }, 'Configurazione','Analisi','Sviluppo','Test','Formazione','Consulenza','Documentazione','Altro'].map(v => typeof v === 'string' ? { value: v, label: v } : v)} value={f.categoria} onChange={v => !readOnly && setF({ ...f, categoria: v })} disabled={readOnly} />
+            <SelectDropdown options={[{ value: '', label: '— nessuna —' }, 'Configurazione','Analisi','Sviluppo','Test','Formazione'].map(v => typeof v === 'string' ? { value: v, label: v } : v)} value={f.categoria} onChange={v => !readOnly && setF({ ...f, categoria: v })} disabled={readOnly} />
           </div>
           <div className="form-group" style={{ marginBottom: 0, gridColumn: '1 / -1' }}>
             <label>Attività <span style={{ color: '#dc2626' }}>*</span></label>
@@ -2151,8 +2301,19 @@ export function TaskModal({ task, reparti, defaultReparto, defaultParentId, onSa
             <DatePicker value={f.previsto} onChange={v => !readOnly && setF({ ...f, previsto: v })} disabled={readOnly} />
           </div>
           <div className="form-group" style={{ marginBottom: 0 }}>
-            <label>Collaudo</label>
-            <DatePicker value={f.collaudo} onChange={v => !readOnly && setF({ ...f, collaudo: v })} disabled={readOnly} />
+            <label>Chiusa il</label>
+            {f.stato === 'Chiusa' ? (
+              <div style={{ padding: '6px 0 8px', borderBottom: '1.5px solid #e2e8f0', fontSize: '13px', color: '#16a34a', fontWeight: 500 }}>
+                {f.collaudo
+                  ? new Date(f.collaudo + 'T00:00:00').toLocaleDateString('it-IT')
+                  : new Date().toLocaleDateString('it-IT')}
+                <span style={{ fontSize: '10px', color: '#94a3b8', marginLeft: 6, fontWeight: 400 }}>automatica</span>
+              </div>
+            ) : (
+              <div style={{ padding: '6px 0 8px', borderBottom: '1.5px solid #e2e8f0', fontSize: '13px', color: '#94a3b8', fontStyle: 'italic' }}>
+                — (valorizzata alla chiusura)
+              </div>
+            )}
           </div>
           <div className="form-group" style={{ marginBottom: 0, gridColumn: '1 / -1' }}>
             <label>Note</label>
