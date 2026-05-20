@@ -1150,37 +1150,30 @@ function KpiPanel({ activeKpi, onClose, onNavigate, onGestisciClienti, onNuovaCo
 
 
 // ── AccordionPersonale — attività/commesse/progetti dell'utente loggato ───────
-function AccordionPersonale({ tipo, userOverride, clients, onOpenProgetto }) {
+function AccordionPersonale({ tipo, userOverride, clients, onOpenProgetto, onNavigateCommessa, onNavigateAttivita }) {
   const [open, setOpen] = React.useState(false);
   const [items, setItems] = React.useState([]);
   const [loading, setLoading] = React.useState(false);
   const [loaded, setLoaded] = React.useState(false);
 
   const myKey = userOverride ? `${userOverride.cognome} ${userOverride.nome}` : null;
-  const myId  = userOverride?.id || null;
-
-  const colonneChiuse = React.useRef(new Set());
 
   const loadItems = React.useCallback(async () => {
     if (loaded || !myKey) return;
     setLoading(true);
     try {
       if (tipo === 'attivita') {
-        // Carica colonne chiuse/annullate
         const { data: cols } = await supabase.from('workflow_colonne').select('id, nome');
         const chiuse = new Set((cols || []).filter(c => /complet|annullat|done|chiusa/i.test(c.nome)).map(c => c.id));
-        colonneChiuse.current = chiuse;
-        // Attività assegnate a questa risorsa non chiuse
         const { data: att } = await supabase
           .from('attivita')
           .select('id, titolo, priorita, colonna_id, commessa_id, colonna:colonna_id(nome)')
           .or(`assegnata_a.eq.${myKey},pm.eq.${myKey}`);
         const aperte = (att || []).filter(a => !chiuse.has(a.colonna_id));
-        // Arricchisci con nome cliente
         const allComm = (clients || []).flatMap(c => (c.commesse || []).map(co => ({ ...co, clientName: c.nome_progetto })));
         setItems(aperte.map(a => {
           const comm = allComm.find(co => co.id === a.commessa_id);
-          return { ...a, clientName: comm?.clientName || null, commessaNome: comm?.nome_commessa || null };
+          return { ...a, clientName: comm?.clientName || null, commessaNome: comm?.nome_commessa || null, commessaId: comm?.id || null };
         }));
       } else if (tipo === 'commesse') {
         const allComm = (clients || []).flatMap(c =>
@@ -1191,21 +1184,20 @@ function AccordionPersonale({ tipo, userOverride, clients, onOpenProgetto }) {
         );
         setItems(allComm);
       } else if (tipo === 'progetti') {
-        // Commesse attive in cui è coinvolto
         const allComm = (clients || []).flatMap(c =>
           (c.commesse || [])
             .filter(co => co.attiva !== false)
             .filter(co => co.pm_commessa === myKey || (co.team || []).includes(myKey))
             .map(co => ({ ...co, clientName: c.nome_progetto }))
         );
-        // Carica progetti collegati
         const commIds = allComm.map(co => co.id);
         if (commIds.length === 0) { setItems([]); setLoaded(true); setLoading(false); return; }
+        // neq chiuso=true per compatibilità Supabase boolean
         const { data: proj } = await supabase
           .from('progetti')
           .select('id, commessa_id, chiuso')
           .in('commessa_id', commIds)
-          .eq('chiuso', false);
+          .neq('chiuso', true);
         setItems((proj || []).map(p => {
           const comm = allComm.find(co => co.id === p.commessa_id);
           return { ...p, clientName: comm?.clientName, commessaNome: comm?.nome_commessa };
@@ -1221,90 +1213,104 @@ function AccordionPersonale({ tipo, userOverride, clients, onOpenProgetto }) {
     setOpen(v => !v);
   };
 
-  const PCOLOR = { alta: { bg: '#FCEBEB', text: '#A32D2D' }, media: { bg: '#FAEEDA', text: '#633806' }, bassa: { bg: '#EAF3DE', text: '#27500A' } };
-
-  const configs = {
-    attivita:  { icon: 'ti-checkbox',  label: 'Le attività in carico a te',  color: '#185FA5', badgeBg: '#E6F1FB', badgeText: '#0C447C' },
-    commesse:  { icon: 'ti-briefcase', label: 'Le commesse in cui lavori',    color: '#0F6E56', badgeBg: '#E1F5EE', badgeText: '#085041' },
-    progetti:  { icon: 'ti-folder',    label: 'I progetti in cui lavori',     color: '#854F0B', badgeBg: '#FAEEDA', badgeText: '#633806' },
-  };
-  const cfg = configs[tipo];
-
   const handleClick = (item) => {
     if (tipo === 'progetti' && onOpenProgetto) {
       onOpenProgetto(item.id, item.commessa_id);
+    } else if (tipo === 'commesse' && onNavigateCommessa) {
+      onNavigateCommessa(item.clientId, item.id);
+    } else if (tipo === 'attivita' && item.commessaId && onNavigateCommessa) {
+      onNavigateCommessa(item.clientId, item.commessaId);
     }
-    // commesse e attività: navigazione futura
   };
 
+  const PCOLOR = {
+    alta:  { bg: '#FCEBEB', text: '#A32D2D', bar: '#E24B4A' },
+    media: { bg: '#FAEEDA', text: '#633806', bar: '#BA7517' },
+    bassa: { bg: '#EAF3DE', text: '#27500A', bar: '#639922' },
+  };
+
+  const configs = {
+    attivita: { label: 'Le attività in carico a te',  color: '#185FA5', badgeBg: '#E6F1FB', badgeText: '#0C447C' },
+    commesse: { label: 'Le commesse in cui lavori',   color: '#0F6E56', badgeBg: '#E1F5EE', badgeText: '#085041' },
+    progetti: { label: 'I progetti in cui lavori',    color: '#854F0B', badgeBg: '#FAEEDA', badgeText: '#633806' },
+  };
+  const cfg = configs[tipo];
+  const isClickable = tipo !== 'attivita' || true; // tutti cliccabili
+
   return (
-    <div style={{ background: '#fff', border: '0.5px solid #e2e8f0', borderRadius: '12px', overflow: 'hidden' }}>
+    <div style={{ borderBottom: '1px solid #e8edf2' }}>
+      {/* ── Header ── */}
       <div onClick={handleToggle}
-        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', cursor: 'pointer', userSelect: 'none' }}
-        onMouseOver={e => e.currentTarget.style.background = '#fafbfc'}
-        onMouseOut={e => e.currentTarget.style.background = 'transparent'}>
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 0', cursor: 'pointer', userSelect: 'none' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <i className={`ti ${cfg.icon}`} style={{ fontSize: 16, color: cfg.color }} aria-hidden="true" />
-          <span style={{ fontSize: 14, fontWeight: 500, color: '#0f172a' }}>{cfg.label}</span>
-          {loaded && (
-            <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: cfg.badgeBg, color: cfg.badgeText, fontWeight: 500 }}>{items.length}</span>
+          <div style={{ width: 3, height: 18, borderRadius: 2, background: open ? cfg.color : '#cbd5e1', flexShrink: 0, transition: 'background 0.2s' }} />
+          <span style={{ fontSize: 13, fontWeight: 500, color: open ? '#0f172a' : '#475569', transition: 'color 0.2s' }}>{cfg.label}</span>
+          {loaded && items.length > 0 && (
+            <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 20, background: cfg.badgeBg, color: cfg.badgeText, fontWeight: 600 }}>{items.length}</span>
           )}
         </div>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-          style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', flexShrink: 0 }}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+          stroke={open ? cfg.color : '#94a3b8'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+          style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s, stroke 0.2s', flexShrink: 0 }}>
           <polyline points="6 9 12 15 18 9"/>
         </svg>
       </div>
 
+      {/* ── Body ── */}
       {open && (
-        <div style={{ borderTop: '0.5px solid #e2e8f0' }}>
-          {loading && (
-            <div style={{ padding: '16px 18px', fontSize: 13, color: '#94a3b8', fontStyle: 'italic' }}>Caricamento...</div>
-          )}
-          {!loading && items.length === 0 && (
-            <div style={{ padding: '16px 18px', fontSize: 13, color: '#94a3b8', fontStyle: 'italic' }}>Nessun elemento</div>
-          )}
-          {!loading && items.map((item, i) => (
-            <div key={item.id || i}
-              onClick={() => handleClick(item)}
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 18px', borderBottom: i < items.length - 1 ? '0.5px solid #f1f5f9' : 'none', cursor: tipo === 'progetti' ? 'pointer' : 'default', transition: 'background 0.1s' }}
-              onMouseOver={e => { if(tipo === 'progetti') e.currentTarget.style.background = '#f8fafc'; }}
-              onMouseOut={e => { e.currentTarget.style.background = 'transparent'; }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                <div style={{ width: 7, height: 7, borderRadius: '50%', background: cfg.color, flexShrink: 0 }} />
-                <div style={{ minWidth: 0 }}>
+        <div style={{ paddingBottom: 10 }}>
+          {loading && <div style={{ padding: '8px 0 12px 13px', fontSize: 12, color: '#94a3b8', fontStyle: 'italic' }}>Caricamento...</div>}
+          {!loading && items.length === 0 && <div style={{ padding: '8px 0 12px 13px', fontSize: 12, color: '#94a3b8', fontStyle: 'italic' }}>Nessun elemento</div>}
+          {!loading && items.map((item, i) => {
+            const pc = PCOLOR[item.priorita] || PCOLOR.media;
+            return (
+              <div key={item.id || i}
+                onClick={() => handleClick(item)}
+                style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 8px 9px 13px', marginBottom: 2, borderRadius: 8, cursor: 'pointer', transition: 'background 0.12s', background: 'transparent', borderLeft: `2px solid transparent` }}
+                onMouseOver={e => { e.currentTarget.style.background = '#f0f7ff'; e.currentTarget.style.borderLeftColor = cfg.color; }}
+                onMouseOut={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderLeftColor = 'transparent'; }}>
+
+                {/* Indicatore priorità / tipo */}
+                {tipo === 'attivita' && (
+                  <div style={{ width: 4, height: 32, borderRadius: 2, background: pc.bar, flexShrink: 0 }} />
+                )}
+                {tipo !== 'attivita' && (
+                  <div style={{ width: 4, height: 32, borderRadius: 2, background: cfg.color + '55', flexShrink: 0 }} />
+                )}
+
+                {/* Testo */}
+                <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: 500, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {tipo === 'attivita' ? item.titolo
                       : tipo === 'commesse' ? item.nome_commessa
-                      : `${item.clientName} — ${item.commessaNome}`}
+                      : item.commessaNome || '—'}
                   </div>
-                  {(item.clientName || item.commessaNome) && (
-                    <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 1 }}>
-                      {tipo === 'attivita' ? (item.clientName || item.commessaNome || '')
-                        : tipo === 'commesse' ? item.clientName
-                        : ''}
-                    </div>
-                  )}
+                  <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {tipo === 'attivita' ? (item.clientName || item.commessaNome || '—')
+                      : tipo === 'commesse' ? item.clientName
+                      : item.clientName}
+                  </div>
                 </div>
+
+                {/* Badge destra */}
+                {tipo === 'attivita' && item.priorita && (
+                  <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 4, background: pc.bg, color: pc.text, fontWeight: 600, flexShrink: 0, border: `0.5px solid ${pc.text}33` }}>{item.priorita}</span>
+                )}
+                {tipo === 'commesse' && (
+                  <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 4, background: item.pm_commessa === myKey ? '#E6F1FB' : '#f1f5f9', color: item.pm_commessa === myKey ? '#0C447C' : '#64748b', fontWeight: 600, flexShrink: 0 }}>
+                    {item.pm_commessa === myKey ? 'PM' : 'team'}
+                  </span>
+                )}
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="m9 18 6-6-6-6"/></svg>
               </div>
-              {tipo === 'attivita' && item.priorita && (
-                <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: (PCOLOR[item.priorita] || PCOLOR.media).bg, color: (PCOLOR[item.priorita] || PCOLOR.media).text, fontWeight: 500, flexShrink: 0, marginLeft: 8 }}>{item.priorita}</span>
-              )}
-              {tipo === 'commesse' && (
-                <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: '#E1F5EE', color: '#085041', fontWeight: 500, flexShrink: 0, marginLeft: 8 }}>
-                  {item.pm_commessa === myKey ? 'PM' : 'team'}
-                </span>
-              )}
-              {tipo === 'progetti' && (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginLeft: 8 }}><path d="m9 18 6-6-6-6"/></svg>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
   );
 }
+
 
 export function KPIView({ staff, matrix, clients, assignments, skillsConfig, currentMonths, trainingCells, onOpenProgetto, userOverride, isAdmin, onNuovaCommessa, onNavigate, onGestisciClienti, onNuovaCommessaDiretta }) {
   const [entity, setEntity] = useState(userOverride?.defaultEntity || null);
@@ -1436,10 +1442,10 @@ export function KPIView({ staff, matrix, clients, assignments, skillsConfig, cur
           {/* ── COLONNA SINISTRA: cerchio + accordion ── */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
-            {/* Cerchio Nuova attività */}
-            <div style={{ background: '#fff', border: '0.5px solid #e2e8f0', borderRadius: '16px', padding: '28px 24px', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 130 }}>
+            {/* Cerchio Nuova attività — allineato a sinistra, no card */}
+            <div style={{ padding: '8px 0 4px' }}>
               <div onClick={() => onNuovaCommessa && onNuovaCommessa()}
-                style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+                style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
                 <div style={{ width: 68, height: 68, borderRadius: '50%', background: '#001d47', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.18s', boxShadow: '0 4px 18px rgba(0,29,71,0.35)' }}
                   onMouseOver={e => { e.currentTarget.style.background = '#0d3470'; }}
                   onMouseOut={e => { e.currentTarget.style.background = '#001d47'; }}>
@@ -1449,29 +1455,14 @@ export function KPIView({ staff, matrix, clients, assignments, skillsConfig, cur
               </div>
             </div>
 
-            {/* Accordion 1 — Attività in carico */}
-            <AccordionPersonale
-              tipo="attivita"
-              userOverride={userOverride}
-              clients={clients}
-              onOpenProgetto={onOpenProgetto}
-            />
-
-            {/* Accordion 2 — Commesse */}
-            <AccordionPersonale
-              tipo="commesse"
-              userOverride={userOverride}
-              clients={clients}
-              onOpenProgetto={onOpenProgetto}
-            />
-
-            {/* Accordion 3 — Progetti */}
-            <AccordionPersonale
-              tipo="progetti"
-              userOverride={userOverride}
-              clients={clients}
-              onOpenProgetto={onOpenProgetto}
-            />
+            {/* Accordion — stile corporate flat */}
+            <div style={{ paddingTop: 8 }}>
+              <AccordionPersonale tipo="attivita" userOverride={userOverride} clients={clients} onOpenProgetto={onOpenProgetto}
+                onNavigateCommessa={(clientId, commessaId) => { if (onNavigate) onNavigate('commessa', clientId, commessaId); }} />
+              <AccordionPersonale tipo="commesse" userOverride={userOverride} clients={clients} onOpenProgetto={onOpenProgetto}
+                onNavigateCommessa={(clientId, commessaId) => { if (onNavigate) onNavigate('commessa', clientId, commessaId); }} />
+              <AccordionPersonale tipo="progetti" userOverride={userOverride} clients={clients} onOpenProgetto={onOpenProgetto} />
+            </div>
           </div>
 
           {/* ── COLONNA DESTRA: 4 card KPI ── */}
