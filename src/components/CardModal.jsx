@@ -673,7 +673,7 @@ export function CardModal({ card, colonne, defaultColId, workflowId, staff, clie
                 <div>
                   <div style={{ fontSize: '10px', color: '#64748b', fontWeight: 500, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Previsto rilascio</div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 13, fontWeight: 500, color: '#0F6E56', fontFamily: 'monospace' }}>{card.data_fine_lavori.split('-').reverse().join('/')}</span>
+                    <span style={{ fontSize: 13, fontWeight: 500, color: '#0F6E56', fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums' }}>{card.data_fine_lavori.split('-').reverse().join('/')}</span>
                     <span style={{ fontSize: 10, color: '#0F6E56', background: '#E1F5EE', border: '0.5px solid #9FE1CB', borderRadius: 4, padding: '1px 6px' }}>da pianificazione</span>
                   </div>
                 </div>
@@ -686,7 +686,7 @@ export function CardModal({ card, colonne, defaultColId, workflowId, staff, clie
               {fld('Rif. Pratica', <input type="text" placeholder="es. PR.26.12345" value={rifPratica} onChange={e => setRifPratica(e.target.value)} />)}
             </div>
 
-            {fld('Stima ore', <input type="number" min="1" step="1" placeholder="es. 16" value={stimaOre} onChange={e => setStimaOre(e.target.value)} style={{ fontFamily: 'monospace' }} />)}
+            {fld('Stima ore', <input type="number" min="1" step="1" placeholder="es. 16" value={stimaOre} onChange={e => setStimaOre(e.target.value)} style={{ fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums' }} />)}
 
           </div>
         </div>

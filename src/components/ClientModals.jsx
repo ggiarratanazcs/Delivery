@@ -109,7 +109,7 @@ function BolleDropdown({ bolleDisponibili, bolleAssociate, onToggle, consuntiviP
             const chiusa = isBollaChiusa(b);
             return (
               <span key={b.id} onClick={() => onToggle(b.id)} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 500, color: chiusa ? '#0F6E56' : '#0C447C', background: '#fff', border: `0.5px solid ${chiusa ? '#9FE1CB' : '#B5D4F4'}`, borderRadius: '20px', padding: '2px 8px', cursor: 'pointer', opacity: chiusa ? 0.55 : 1 }}>
-                <span style={{ fontFamily: 'monospace', fontSize: '10px' }}>{b.codice}</span>
+                <span style={{ fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums', fontSize: '10px' }}>{b.codice}</span>
                 {chiusa && <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>}
                 <span style={{ fontSize: '10px', opacity: 0.5 }}>×</span>
               </span>
@@ -138,7 +138,7 @@ function BolleDropdown({ bolleDisponibili, bolleAssociate, onToggle, consuntiviP
                 <div style={{ width: 14, height: 14, borderRadius: '3px', flexShrink: 0, border: `2px solid ${sel ? (chiusa ? '#0F6E56' : '#0054a6') : '#cbd5e1'}`, background: sel ? (chiusa ? '#0F6E56' : '#0054a6') : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {sel && <span style={{ color: '#fff', fontSize: '9px', lineHeight: 1 }}>✓</span>}
                 </div>
-                <span style={{ fontFamily: 'monospace', fontSize: '11px', fontWeight: 700, color: sel ? (chiusa ? '#0F6E56' : '#0054a6') : '#475569', flexShrink: 0 }}>{b.codice}</span>
+                <span style={{ fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums', fontSize: '11px', fontWeight: 700, color: sel ? (chiusa ? '#0F6E56' : '#0054a6') : '#475569', flexShrink: 0 }}>{b.codice}</span>
                 <span style={{ fontSize: '11px', color: '#64748b', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.descrizione || '—'}</span>
                 {chiusa && <span style={{ fontSize: '9px', background: '#E1F5EE', color: '#085041', border: '0.5px solid #9FE1CB', borderRadius: '4px', padding: '1px 5px', flexShrink: 0 }}>chiusa</span>}
                 <span style={{ fontSize: '11px', fontWeight: 500, color: sel ? (chiusa ? '#0F6E56' : '#0054a6') : '#94a3b8', flexShrink: 0 }}>{g}g</span>
@@ -226,14 +226,14 @@ function KpiEconomicoSidebar({ commessaId, ordiniCommessa }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '4px' }}>
         <span style={{ fontSize: '10px', color: '#94a3b8' }}>Valore</span>
         <div style={{ textAlign: 'right' }}>
-          <span style={{ fontSize: '12px', fontWeight: 600, color: '#185FA5', fontFamily: 'monospace' }}>{valore > 0 ? fmtEur(valore) : '—'}</span>
+          <span style={{ fontSize: '12px', fontWeight: 600, color: '#185FA5', fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums' }}>{valore > 0 ? fmtEur(valore) : '—'}</span>
           {valore > 0 && <div style={{ fontSize: '9px', color: '#94a3b8' }}>da ordini</div>}
         </div>
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '4px' }}>
         <span style={{ fontSize: '10px', color: '#94a3b8' }}>Costo</span>
         <div style={{ textAlign: 'right' }}>
-          <span style={{ fontSize: '12px', fontWeight: 600, color: '#D85A30', fontFamily: 'monospace' }}>{loadingKpi ? '...' : costo > 0 ? fmtEur(costo) : '—'}</span>
+          <span style={{ fontSize: '12px', fontWeight: 600, color: '#D85A30', fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums' }}>{loadingKpi ? '...' : costo > 0 ? fmtEur(costo) : '—'}</span>
           {costo > 0 && <div style={{ fontSize: '9px', color: '#94a3b8' }}>{fmtNum(costo / COSTO_GIORNO)}g</div>}
         </div>
       </div>
@@ -244,7 +244,7 @@ function KpiEconomicoSidebar({ commessaId, ordiniCommessa }) {
       )}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '4px', borderTop: '0.5px solid #e2e8f0', marginTop: '2px' }}>
         <span style={{ fontSize: '10px', color: '#94a3b8' }}>Margine</span>
-        <span style={{ fontSize: '13px', fontWeight: 700, color: margineColor, fontFamily: 'monospace' }}>
+        <span style={{ fontSize: '13px', fontWeight: 700, color: margineColor, fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums' }}>
           {marginePerc !== null ? `${fmtNum(marginePerc)}%` : '—'}
         </span>
       </div>
@@ -293,13 +293,13 @@ function KpiEconomicoCommessa({ commessaId, ordiniCommessa }) {
       {/* Valore */}
       <div style={{ padding: '0 14px', borderRight: '0.5px solid rgba(255,255,255,0.1)' }}>
         <div style={{ fontSize: '9px', color: 'rgba(255,255,255,0.42)', marginBottom: '3px' }}>Valore commessa</div>
-        <div style={{ fontSize: '16px', fontWeight: 500, color: '#fff', fontFamily: 'monospace' }}>{valore > 0 ? fmtEur(valore) : '—'}</div>
+        <div style={{ fontSize: '16px', fontWeight: 500, color: '#fff', fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums' }}>{valore > 0 ? fmtEur(valore) : '—'}</div>
         <div style={{ fontSize: '9px', color: 'rgba(255,255,255,0.28)', marginTop: '2px' }}>da ordini cliente</div>
       </div>
       {/* Costo */}
       <div style={{ padding: '0 14px', borderRight: '0.5px solid rgba(255,255,255,0.1)' }}>
         <div style={{ fontSize: '9px', color: 'rgba(255,255,255,0.42)', marginBottom: '3px' }}>Costo manodopera</div>
-        <div style={{ fontSize: '16px', fontWeight: 500, color: '#85B7EB', fontFamily: 'monospace' }}>{loadingKpi ? '...' : costo > 0 ? fmtEur(costo) : '—'}</div>
+        <div style={{ fontSize: '16px', fontWeight: 500, color: '#85B7EB', fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums' }}>{loadingKpi ? '...' : costo > 0 ? fmtEur(costo) : '—'}</div>
         <div style={{ fontSize: '9px', color: 'rgba(255,255,255,0.28)', marginTop: '2px' }}>{costo > 0 ? `${fmtNum(costo / COSTO_GIORNO)}g · ${COSTO_GIORNO} €/g` : 'da consuntivi'}</div>
         {valore > 0 && costo > 0 && (
           <div style={{ height: '3px', background: 'rgba(255,255,255,0.1)', borderRadius: '2px', overflow: 'hidden', marginTop: '5px' }}>
@@ -311,7 +311,7 @@ function KpiEconomicoCommessa({ commessaId, ordiniCommessa }) {
       <div style={{ paddingLeft: '14px' }}>
         <div style={{ fontSize: '9px', color: 'rgba(255,255,255,0.42)', marginBottom: '3px' }}>Margine</div>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-          <div style={{ fontSize: '16px', fontWeight: 500, color: marginePerc !== null ? margineColor : 'rgba(255,255,255,0.3)', fontFamily: 'monospace' }}>
+          <div style={{ fontSize: '16px', fontWeight: 500, color: marginePerc !== null ? margineColor : 'rgba(255,255,255,0.3)', fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums' }}>
             {marginePerc !== null ? `${fmtNum(marginePerc)}%` : '—'}
           </div>
           {margine !== 0 && valore > 0 && <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.35)' }}>{fmtEur(margine)}</div>}
@@ -347,7 +347,7 @@ function OrdineForm({ onSave, onCancel }) {
         <div>
           <div style={{ fontSize: '10px', color: '#64748b', fontWeight: 500, marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Codice *</div>
           <input value={codice} onChange={e => setCodice(e.target.value)} placeholder="es. ABCDE" maxLength={5}
-            style={{ width: '100%', fontSize: '13px', border: 'none', borderBottom: '1.5px solid #bfdbfe', background: 'transparent', padding: '3px 0 6px', outline: 'none', fontFamily: 'monospace', letterSpacing: '0.08em', boxSizing: 'border-box', textTransform: 'uppercase' }} autoFocus />
+            style={{ width: '100%', fontSize: '13px', border: 'none', borderBottom: '1.5px solid #bfdbfe', background: 'transparent', padding: '3px 0 6px', outline: 'none', fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums', letterSpacing: '0.08em', boxSizing: 'border-box', textTransform: 'uppercase' }} autoFocus />
         </div>
         <div>
           <div style={{ fontSize: '10px', color: '#64748b', fontWeight: 500, marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Numero *</div>
@@ -729,10 +729,10 @@ export function ProjectModal({ staff, clients, matrix, targetedEdit, onClose, on
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               {ordiniCommessa.map((o, i) => (
                 <div key={o.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', borderRadius: '8px', border: '0.5px solid #e2e8f0', background: i % 2 === 0 ? '#fff' : '#fafbfc' }}>
-                  <span style={{ fontFamily: 'monospace', fontSize: '12px', fontWeight: 600, color: '#0054a6', background: '#eff6ff', border: '0.5px solid #bfdbfe', borderRadius: '5px', padding: '2px 8px', flexShrink: 0 }}>{o.codice}·{o.numero}</span>
+                  <span style={{ fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums', fontSize: '12px', fontWeight: 600, color: '#0054a6', background: '#eff6ff', border: '0.5px solid #bfdbfe', borderRadius: '5px', padding: '2px 8px', flexShrink: 0 }}>{o.codice}·{o.numero}</span>
                   <span style={{ fontSize: '12px', color: '#64748b' }}>{o.data ? new Date(o.data + 'T00:00:00').toLocaleDateString('it-IT') : '—'}</span>
                   <span style={{ flex: 1 }} />
-                  <span style={{ fontFamily: 'monospace', fontSize: '13px', fontWeight: 500, color: '#0f172a' }}>{o.importo ? fmtEur(o.importo) : '—'}</span>
+                  <span style={{ fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums', fontSize: '13px', fontWeight: 500, color: '#0f172a' }}>{o.importo ? fmtEur(o.importo) : '—'}</span>
                   <button onClick={() => handleDeleteOrdine(o.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#e2e8f0', fontSize: '14px', padding: '0 2px' }} onMouseOver={e => e.currentTarget.style.color = '#dc2626'} onMouseOut={e => e.currentTarget.style.color = '#e2e8f0'}>
                     <i className="ti ti-trash" aria-hidden="true" style={{ fontSize: '14px' }} />
                   </button>
@@ -741,7 +741,7 @@ export function ProjectModal({ staff, clients, matrix, targetedEdit, onClose, on
               {ordiniCommessa.length > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 14px 2px', borderTop: '0.5px solid #e2e8f0', marginTop: '4px' }}>
                   <span style={{ fontSize: '12px', color: '#64748b' }}>Totale valore</span>
-                  <span style={{ fontFamily: 'monospace', fontSize: '14px', fontWeight: 500, color: '#185FA5' }}>{fmtEur(totaleOrdini)}</span>
+                  <span style={{ fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums', fontSize: '14px', fontWeight: 500, color: '#185FA5' }}>{fmtEur(totaleOrdini)}</span>
                 </div>
               )}
             </div>
@@ -817,8 +817,8 @@ export function ProjectModal({ staff, clients, matrix, targetedEdit, onClose, on
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
             {att.data_richiesta && <span style={{ fontSize: '10px', color: '#475569', background: '#f1f5f9', border: '0.5px solid #e2e8f0', borderRadius: '4px', padding: '1px 6px' }}>📅 {att.data_richiesta.split('-').reverse().join('/')}</span>}
-            {bollaAtt && <span style={{ fontSize: '10px', fontFamily: 'monospace', fontWeight: 600, color: '#633806', background: '#FAEEDA', border: '0.5px solid #FAC775', borderRadius: '4px', padding: '1px 6px' }}>{bollaAtt.codice}</span>}
-            {att.rif_pratica && <span style={{ fontSize: '10px', color: '#0054a6', background: '#eff6ff', border: '0.5px solid #bfdbfe', borderRadius: '4px', padding: '1px 6px', fontFamily: 'monospace' }}>{att.rif_pratica}</span>}
+            {bollaAtt && <span style={{ fontSize: '10px', fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: '#633806', background: '#FAEEDA', border: '0.5px solid #FAC775', borderRadius: '4px', padding: '1px 6px' }}>{bollaAtt.codice}</span>}
+            {att.rif_pratica && <span style={{ fontSize: '10px', color: '#0054a6', background: '#eff6ff', border: '0.5px solid #bfdbfe', borderRadius: '4px', padding: '1px 6px', fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums' }}>{att.rif_pratica}</span>}
             {statoWf && <span style={{ fontSize: '10px', fontStyle: 'italic', color: '#94a3b8', marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '3px' }}><span style={{ width: 5, height: 5, borderRadius: '50%', background: '#1D9E75', display: 'inline-block' }} />{statoWf}</span>}
           </div>
         </div>
@@ -1091,7 +1091,7 @@ export function ClientModal({ staff, matrix, onClose }) {
             <div className="form-group"><label>Nome cliente</label><input placeholder="Ragione sociale..." onChange={e => setN(e.target.value)} /></div>
             <div className="form-group">
               <label>Codice gestionale <span style={{ fontSize: '10px', color: '#dc2626', fontWeight: 600, marginLeft: 6 }}>* obbligatorio</span></label>
-              <input placeholder="es. 00012345" value={codice} onChange={e => handleCodice(e.target.value)} style={{ fontFamily: 'monospace', letterSpacing: '0.1em', ...(errCodice ? { borderColor: '#fca5a5' } : {}) }} maxLength={8} />
+              <input placeholder="es. 00012345" value={codice} onChange={e => handleCodice(e.target.value)} style={{ fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums', letterSpacing: '0.1em', ...(errCodice ? { borderColor: '#fca5a5' } : {}) }} maxLength={8} />
               {errCodice && <div style={{ fontSize: '11px', color: '#dc2626', marginTop: 4 }}>{errCodice}</div>}
               {codice.length > 0 && codice.length < 8 && <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: 4 }}>{codice.length}/8 cifre</div>}
             </div>
@@ -1175,7 +1175,7 @@ export function EditClientModal({ client, staff, matrix, clients, onClose }) {
               <h3 style={{ margin: 0 }}>{client.nome_progetto}</h3>
               <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 400 }}>
                 Modifica cliente
-                {client.codice_cliente && <span style={{ marginLeft: 8, fontFamily: 'monospace', fontSize: '11px', background: '#f1f5f9', color: '#475569', padding: '1px 6px', borderRadius: '4px', border: '0.5px solid #e2e8f0' }}>{client.codice_cliente}</span>}
+                {client.codice_cliente && <span style={{ marginLeft: 8, fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums', fontSize: '11px', background: '#f1f5f9', color: '#475569', padding: '1px 6px', borderRadius: '4px', border: '0.5px solid #e2e8f0' }}>{client.codice_cliente}</span>}
               </div>
             </div>
           </div>
@@ -1185,7 +1185,7 @@ export function EditClientModal({ client, staff, matrix, clients, onClose }) {
           <div className="modal-left" style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
             <div className="form-group">
               <label>Codice gestionale <span style={{ fontSize: '10px', color: '#dc2626', fontWeight: 600, marginLeft: 6 }}>* obbligatorio</span></label>
-              <input placeholder="es. 00012345" value={codice} onChange={e => handleCodice(e.target.value)} style={{ fontFamily: 'monospace', letterSpacing: '0.1em', ...(errCodice ? { borderColor: '#fca5a5' } : {}) }} maxLength={8} />
+              <input placeholder="es. 00012345" value={codice} onChange={e => handleCodice(e.target.value)} style={{ fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums', letterSpacing: '0.1em', ...(errCodice ? { borderColor: '#fca5a5' } : {}) }} maxLength={8} />
               {errCodice && <div style={{ fontSize: '11px', color: '#dc2626', marginTop: 4 }}>{errCodice}</div>}
               {codice.length > 0 && codice.length < 8 && <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: 4 }}>{codice.length}/8 cifre</div>}
             </div>
@@ -1264,7 +1264,7 @@ export function ManageClientsModal({ clients, onClose, onEdit }) {
           {filtered.length === 0 && <div style={{ textAlign: 'center', color: '#94a3b8', padding: '20px', fontSize: '13px' }}>Nessun cliente trovato</div>}
           {filtered.map(c => (
             <div key={c.id} style={{ display: 'flex', alignItems: 'center', padding: '11px 0', borderBottom: '1px solid #f1f5f9', gap: '8px' }}>
-              {c.codice_cliente && <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#94a3b8', background: '#f8fafc', padding: '1px 6px', borderRadius: '4px', border: '0.5px solid #e2e8f0', flexShrink: 0 }}>{c.codice_cliente}</span>}
+              {c.codice_cliente && <span style={{ fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums', fontSize: '11px', color: '#94a3b8', background: '#f8fafc', padding: '1px 6px', borderRadius: '4px', border: '0.5px solid #e2e8f0', flexShrink: 0 }}>{c.codice_cliente}</span>}
               <span style={{ fontWeight: 600, cursor: 'pointer', color: '#2563eb', flex: 1, fontSize: '13px' }} onClick={() => onEdit(c)}>{c.nome_progetto}</span>
               {c.pm_name && <span style={{ fontSize: '11px', color: '#64748b', marginRight: '10px', fontStyle: 'italic' }}>{c.pm_name}</span>}
               <button onClick={() => handleDelete(c.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px' }}>🗑️</button>
@@ -1318,7 +1318,7 @@ export function ImportExcelModal({ onClose }) {
           <div style={{ fontSize: '10px', fontWeight: 700, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '10px' }}>Struttura file Excel</div>
           {cols.map(r => (
             <div key={r.col} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '7px' }}>
-              <span style={{ fontSize: '11px', fontWeight: 700, background: 'rgba(255,255,255,0.15)', color: '#fff', borderRadius: '5px', padding: '2px 7px', fontFamily: 'monospace', flexShrink: 0, minWidth: 22, textAlign: 'center' }}>{r.col}</span>
+              <span style={{ fontSize: '11px', fontWeight: 700, background: 'rgba(255,255,255,0.15)', color: '#fff', borderRadius: '5px', padding: '2px 7px', fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums', flexShrink: 0, minWidth: 22, textAlign: 'center' }}>{r.col}</span>
               <span style={{ fontSize: '12px', fontWeight: 500, color: '#fff', flex: 1 }}>{r.nome}</span>
               <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', fontStyle: 'italic' }}>{r.fmt}</span>
             </div>

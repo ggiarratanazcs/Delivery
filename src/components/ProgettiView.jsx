@@ -497,7 +497,7 @@ export function ProgettoView({ progettoId, commessaId, clients, staff, currentUs
                   return (
                     <tr key={`rep-${row.reparto}`} style={{ background: '#f1f5f9', cursor: 'pointer', borderTop: '1.5px solid #e2e8f0' }}
                       onClick={() => { const cur = isRepartoOpen(row.reparto); setExpandAll(false); setExpanded(p => ({ ...p, [row.reparto]: !cur })); }}>
-                      <td style={{ ...tdStyle, color: '#475569', fontFamily: 'monospace', fontSize: '11px', borderBottom: '1px solid #e2e8f0' }}>{row.repartoTask?.task_id_display}</td>
+                      <td style={{ ...tdStyle, color: '#475569', fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums', fontSize: '11px', borderBottom: '1px solid #e2e8f0' }}>{row.repartoTask?.task_id_display}</td>
                       <td colSpan={9} style={{ ...tdStyle, color: '#475569', fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', fontSize: '11px', borderBottom: '1px solid #e2e8f0' }}>
                         <span style={{ marginRight: 8 }}>{isRepartoOpen(row.reparto) ? '▼' : '▶'}</span>
                         {row.reparto}
@@ -533,7 +533,7 @@ export function ProgettoView({ progettoId, commessaId, clients, staff, currentUs
                     onMouseOver={e => e.currentTarget.style.background = task.attivita_id ? '#f0fdf8' : '#f8fafc'}
                     onMouseOut={e => e.currentTarget.style.background = task.attivita_id ? '#f8fffe' : '#fff'}
                     style={{ background: task.attivita_id ? '#f8fffe' : '#fff', borderLeft: task.attivita_id ? '2px solid #9FE1CB' : 'none', cursor: 'pointer' }}>
-                    <td style={{ ...tdStyle, color: '#94a3b8', fontFamily: 'monospace', paddingLeft: 10 + Math.max(0, depth) }}>{task.task_id_display}</td>
+                    <td style={{ ...tdStyle, color: '#94a3b8', fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums', paddingLeft: 10 + Math.max(0, depth) }}>{task.task_id_display}</td>
                     <td style={{ ...tdStyle, color: '#475569' }}>{task.categoria}</td>
                     <td style={{ ...tdStyle, color: '#0f172a', fontWeight: 500, minWidth: 160 }}>{task.attivita}</td>
                     <td style={{ ...tdStyle }}>
@@ -855,7 +855,7 @@ export function ProgettoHome({ commessa, commessaId, tasks, staff, progettoId, i
           {bolle.length > 0 && (
             <div style={{ marginLeft: 'auto', display: 'flex', gap: '4px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
               {bolle.map(b => (
-                <span key={b.id} style={{ fontSize: '10px', fontFamily: 'monospace', fontWeight: 600, color: accent, background: accentLight, border: `0.5px solid ${accentBorder}`, borderRadius: '4px', padding: '1px 5px' }}>{b.codice}</span>
+                <span key={b.id} style={{ fontSize: '10px', fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: accent, background: accentLight, border: `0.5px solid ${accentBorder}`, borderRadius: '4px', padding: '1px 5px' }}>{b.codice}</span>
               ))}
             </div>
           )}
@@ -1135,10 +1135,10 @@ export function ProgettoHome({ commessa, commessaId, tasks, staff, progettoId, i
                 <tbody>
                   {ordini.map((o, i) => (
                     <tr key={o.id} style={{ borderBottom: '1px solid #f1f5f9', background: i % 2 === 0 ? '#fff' : '#fafbfc' }}>
-                      <td style={{ padding: '9px 12px', fontFamily: 'monospace', fontWeight: 600, color: '#0054a6' }}>{o.codice}</td>
+                      <td style={{ padding: '9px 12px', fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: '#0054a6' }}>{o.codice}</td>
                       <td style={{ padding: '9px 12px', color: '#475569' }}>{o.numero}</td>
                       <td style={{ padding: '9px 12px', color: '#475569' }}>{o.data ? new Date(o.data + 'T00:00:00').toLocaleDateString('it-IT') : '—'}</td>
-                      <td style={{ padding: '9px 12px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 600, color: '#0f172a' }}>
+                      <td style={{ padding: '9px 12px', textAlign: 'right', fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: '#0f172a' }}>
                         {o.importo ? new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(o.importo) : '—'}
                       </td>
  
@@ -1191,7 +1191,7 @@ export function ProgettoHome({ commessa, commessaId, tasks, staff, progettoId, i
               <span style={{ fontSize: '9px', fontWeight: 700, color: accent, background: '#fff', border: `0.5px solid ${accentBorder}`, borderRadius: '4px', padding: '1px 5px', flexShrink: 0, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                 {b._tipo === 'consulenza' ? 'cons' : 'svil'}
               </span>
-              <span style={{ fontFamily: 'monospace', fontSize: '12px', fontWeight: 700, color: accent, flexShrink: 0 }}>{b.codice}</span>
+              <span style={{ fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums', fontSize: '12px', fontWeight: 700, color: accent, flexShrink: 0 }}>{b.codice}</span>
               <span style={{ fontSize: '12px', color: '#64748b', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.descrizione || '—'}</span>
               <div style={{ width: 48, flexShrink: 0 }}>
                 <div style={{ height: 4, background: '#fff', borderRadius: '2px', overflow: 'hidden', border: `0.5px solid ${accentBorder}` }}>
@@ -1199,8 +1199,8 @@ export function ProgettoHome({ commessa, commessaId, tasks, staff, progettoId, i
                 </div>
               </div>
               <div style={{ flexShrink: 0, textAlign: 'right' }}>
-                <div style={{ fontSize: '11px', fontWeight: 600, color: b.isChiusa ? '#94a3b8' : accent, fontFamily: 'monospace' }}>{b.residui.toFixed(1)}g res.</div>
-                <div style={{ fontSize: '10px', color: '#94a3b8', fontFamily: 'monospace' }}>{b.giorniDisp.toFixed(1)}g tot.</div>
+                <div style={{ fontSize: '11px', fontWeight: 600, color: b.isChiusa ? '#94a3b8' : accent, fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums' }}>{b.residui.toFixed(1)}g res.</div>
+                <div style={{ fontSize: '10px', color: '#94a3b8', fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums' }}>{b.giorniDisp.toFixed(1)}g tot.</div>
               </div>
               <span style={{ fontSize: '10px', color: '#94a3b8' }}>›</span>
             </div>
@@ -1251,7 +1251,7 @@ export function ProgettoHome({ commessa, commessaId, tasks, staff, progettoId, i
                 <button onClick={() => setBollaSelezionata(null)} style={{ position: 'absolute', top: 14, right: 14, background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '6px', color: '#fff', cursor: 'pointer', fontSize: '14px', width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>×</button>
                 <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '10px' }}>Bolla di lavoro</div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
-                  <span style={{ fontFamily: 'monospace', fontSize: '20px', fontWeight: 700, color: '#fff', background: 'rgba(255,255,255,0.12)', padding: '4px 12px', borderRadius: '8px' }}>{b.codice}</span>
+                  <span style={{ fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums', fontSize: '20px', fontWeight: 700, color: '#fff', background: 'rgba(255,255,255,0.12)', padding: '4px 12px', borderRadius: '8px' }}>{b.codice}</span>
                   <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '20px', background: b.accent, color: '#fff', fontWeight: 600 }}>{b._tipo === 'consulenza' ? 'Consulenza' : 'Sviluppo'}</span>
                 </div>
                 <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.9)', lineHeight: 1.4, fontWeight: 400 }}>{b.descrizione || '—'}</div>
@@ -1317,7 +1317,7 @@ export function OrdineModal({ progettoId, onClose }) {
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px' }}>
             <div className="form-group" style={{ marginBottom:0 }}>
               <label>Codice <span style={{ color:'#dc2626' }}>*</span></label>
-              <input placeholder="es. ABCDE" value={codice} onChange={e => setCodice(e.target.value)} maxLength={5} style={{ textTransform:'uppercase', fontFamily:'monospace', letterSpacing:'0.1em' }} autoFocus />
+              <input placeholder="es. ABCDE" value={codice} onChange={e => setCodice(e.target.value)} maxLength={5} style={{ textTransform:'uppercase', fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums', letterSpacing:'0.1em' }} autoFocus />
             </div>
             <div className="form-group" style={{ marginBottom:0 }}>
               <label>Numero <span style={{ color:'#dc2626' }}>*</span></label>
@@ -1541,7 +1541,7 @@ export function ProgettoGantt({ tasks, reparti, isReparto, onTaskClick, commessa
               >
                 {row.type === 'task' ? (
                   <span title={row.task.attivita}>
-                    <span style={{ color: '#94a3b8', fontFamily: 'monospace', marginRight: 6, fontSize: '10px' }}>{row.task.task_id_display}</span>
+                    <span style={{ color: '#94a3b8', fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums', marginRight: 6, fontSize: '10px' }}>{row.task.task_id_display}</span>
                     {row.task.attivita}
                   </span>
                 ) : (
@@ -1834,7 +1834,7 @@ export function AvanzamentoView({ tasks, clientName }) {
                     const ritardo = isInRitardo(t);
                     return (
                       <tr key={t.id} style={{ background: ritardo ? '#fef2f2' : '#fff', borderBottom: '1px solid #f1f5f9' }}>
-                        <td style={{ ...tdS, fontFamily: 'monospace', color: '#94a3b8', fontSize: '10px' }}>{t.task_id_display}</td>
+                        <td style={{ ...tdS, fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums', color: '#94a3b8', fontSize: '10px' }}>{t.task_id_display}</td>
                         <td style={{ ...tdS, color: '#64748b' }}>{t.reparto}</td>
                         <td style={{ ...tdS, color: '#475569' }}>{t.categoria}</td>
                         <td style={{ ...tdS, color: '#0f172a', fontWeight: 500 }}>{t.attivita}{ritardo && <span style={{ marginLeft: 4, fontSize: '9px', color: '#dc2626' }}>▲ ritardo</span>}</td>
@@ -2016,13 +2016,13 @@ export function ConsuntiviView({ progettoId, commessaId }) {
                   style={{ background: i % 2 === 0 ? '#fff' : '#fafbfc' }}>
 
                   {/* Anno/Mese */}
-                  <td style={{ ...tdS, whiteSpace: 'nowrap', color: '#475569', borderRight: '1px solid #f1f5f9', fontFamily: 'monospace' }}>
+                  <td style={{ ...tdS, whiteSpace: 'nowrap', color: '#475569', borderRight: '1px solid #f1f5f9', fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums' }}>
                     {c.anno_mese}
                   </td>
 
                   {/* Operatore — codice + nome sotto */}
                   <td style={{ ...tdS, borderRight: '1px solid #f1f5f9' }}>
-                    <div style={{ fontWeight: 600, color: '#0f172a', fontSize: '12px', fontFamily: 'monospace' }}>
+                    <div style={{ fontWeight: 600, color: '#0f172a', fontSize: '12px', fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums' }}>
                       {c.codice_operatore || '—'}
                     </div>
                     {c.nome_operatore && (
@@ -2035,7 +2035,7 @@ export function ConsuntiviView({ progettoId, commessaId }) {
                   {/* Bolla */}
                   <td style={{ ...tdS, borderRight: '1px solid #f1f5f9' }}>
                     {c.codice_bolla && (
-                      <span style={{ fontSize: '11px', padding: '2px 7px', borderRadius: '6px', background: '#f1f5f9', color: '#0054a6', fontFamily: 'monospace', fontWeight: 600 }}>
+                      <span style={{ fontSize: '11px', padding: '2px 7px', borderRadius: '6px', background: '#f1f5f9', color: '#0054a6', fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
                         {c.codice_bolla}
                       </span>
                     )}
@@ -2047,12 +2047,12 @@ export function ConsuntiviView({ progettoId, commessaId }) {
                   </td>
 
                   {/* Ore tecniche */}
-                  <td style={{ ...tdS, textAlign: 'right', fontFamily: 'monospace', color: '#0054a6', fontWeight: 600, borderRight: '1px solid #f1f5f9' }}>
+                  <td style={{ ...tdS, textAlign: 'right', fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums', color: '#0054a6', fontWeight: 600, borderRight: '1px solid #f1f5f9' }}>
                     {fmtNum(c.ore_tecniche)}
                   </td>
 
                   {/* Ore pagamento */}
-                  <td style={{ ...tdS, textAlign: 'right', fontFamily: 'monospace', color: '#16a34a', fontWeight: 600 }}>
+                  <td style={{ ...tdS, textAlign: 'right', fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums', color: '#16a34a', fontWeight: 600 }}>
                     {fmtNum(c.ore_pagamento)}
                   </td>
                 </tr>
@@ -2063,10 +2063,10 @@ export function ConsuntiviView({ progettoId, commessaId }) {
                 <td colSpan={4} style={{ ...tdS, fontWeight: 700, color: '#475569', textAlign: 'right', borderTop: '2px solid #e2e8f0', borderRight: '1px solid #f1f5f9' }}>
                   Totale
                 </td>
-                <td style={{ ...tdS, textAlign: 'right', fontFamily: 'monospace', fontWeight: 700, color: '#0054a6', borderTop: '2px solid #e2e8f0', borderRight: '1px solid #f1f5f9' }}>
+                <td style={{ ...tdS, textAlign: 'right', fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums', fontWeight: 700, color: '#0054a6', borderTop: '2px solid #e2e8f0', borderRight: '1px solid #f1f5f9' }}>
                   {fmtNum(totOreT)}
                 </td>
-                <td style={{ ...tdS, textAlign: 'right', fontFamily: 'monospace', fontWeight: 700, color: '#16a34a', borderTop: '2px solid #e2e8f0' }}>
+                <td style={{ ...tdS, textAlign: 'right', fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums', fontWeight: 700, color: '#16a34a', borderTop: '2px solid #e2e8f0' }}>
                   {fmtNum(totOreP)}
                 </td>
               </tr>
@@ -2293,7 +2293,7 @@ export function NoteProgetto({ progettoId, staff, currentUser, commessa, chiuso 
           return (
             <div key={n.id} style={{ background: '#fff', borderRadius: '12px', border: '0.5px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 2px 4px rgba(0,0,0,0.04)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', borderBottom: '0.5px solid #f1f5f9', flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
-                <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#94a3b8', flexShrink: 0 }}>{n.codice}</span>
+                <span style={{ fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums', fontSize: '11px', color: '#94a3b8', flexShrink: 0 }}>{n.codice}</span>
                 <div style={{ width: 1, height: 14, background: '#e2e8f0', flexShrink: 0 }} />
                 <span style={{ fontSize: '13px', fontWeight: 600, color: '#0f172a', flex: 1 }}>{n.titolo}</span>
                 {n.categoria && <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '20px', background: cat.bg, color: cat.text, fontWeight: 500, flexShrink: 0 }}>{n.categoria}</span>}
@@ -2362,7 +2362,7 @@ export function NotaModal({ nota, progettoId, staff, noteCount, onClose }) {
           <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '12px' }}>
             <div className="form-group" style={{ marginBottom: 0 }}>
               <label>Codice</label>
-              <input value={f.codice} onChange={e => setF(p => ({ ...p, codice: e.target.value }))} style={{ fontFamily: 'monospace' }} />
+              <input value={f.codice} onChange={e => setF(p => ({ ...p, codice: e.target.value }))} style={{ fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums' }} />
             </div>
             <div className="form-group" style={{ marginBottom: 0 }}>
               <label>Titolo <span style={{ color: '#dc2626' }}>*</span></label>

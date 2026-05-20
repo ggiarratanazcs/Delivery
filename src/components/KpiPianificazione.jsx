@@ -90,7 +90,7 @@ export function KpiPianificazione({ staff, clients, assignments }) {
             return (
               <div key={m.label} style={{ background: '#fff', borderRadius: 12, border: '0.5px solid #e2e8f0', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{m.label}</div>
-                <div style={{ fontSize: 22, fontWeight: 700, color: c.text, fontFamily: 'monospace' }}>{m.utilizzo}%</div>
+                <div style={{ fontSize: 22, fontWeight: 700, color: c.text, fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums' }}>{m.utilizzo}%</div>
                 <div style={{ width: '100%', height: 4, background: '#f1f5f9', borderRadius: 2, overflow: 'hidden' }}>
                   <div style={{ width: `${m.utilizzo}%`, height: '100%', background: c.bar, borderRadius: 2, transition: 'width 0.3s' }} />
                 </div>

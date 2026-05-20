@@ -658,7 +658,7 @@ export function SviluppoView({ staff, clients = [], isAdmin = false, filterSearc
                   <div style={{ fontSize: '12px', fontWeight: 500, color: '#0f172a', marginBottom: 6, lineHeight: 1.35 }}>{a.titolo}</div>
                   <div style={{ display: 'flex', gap: '4px', alignItems: 'center', marginBottom: 4, flexWrap: 'wrap' }}>
                     {a.priorita && <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '4px', fontWeight: 500, background: pc.bg, color: pc.color }}>{a.priorita}</span>}
-                    {a.stima_ore && <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '4px', background: '#E6F1FB', color: '#0C447C', fontFamily: 'monospace', fontWeight: 500 }}>{a.stima_ore}h</span>}
+                    {a.stima_ore && <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '4px', background: '#E6F1FB', color: '#0C447C', fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums', fontWeight: 500 }}>{a.stima_ore}h</span>}
                   </div>
                   {(() => {
                     const clienteNome = a.commessa?.client_id ? (clientiMap[a.commessa.client_id] || null) : null;
@@ -694,14 +694,13 @@ export function SviluppoView({ staff, clients = [], isAdmin = false, filterSearc
               const simExtra = (simulation && simulation.monthKey === m.key) ? (simulation.hours || 0) : 0;
               const usedDays = Math.round((usedHours + simExtra) / 8);
               const [my, mm] = m.key.split('-').map(Number);
-              const effectiveWd = workingDaysInMonth(my, mm - 1, true);
               const today = new Date(); today.setHours(0,0,0,0);
               const todayKey = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`;
-              const passedWd = m.key === todayKey ? workingDaysInMonth(my, mm-1) - effectiveWd : 0;
+              // effectiveWd = giorni lavorativi residui (da domani se mese corrente, tutti se mese futuro)
+              const effectiveWd = workingDaysInMonth(my, mm - 1, m.key === todayKey);
               const totalDays = filteredStaff.length * effectiveWd || effectiveWd;
-              const usedDaysAdjusted = Math.max(0, usedDays - passedWd * filteredStaff.length);
-              const free = Math.max(0, totalDays - usedDaysAdjusted);
-              const pct = totalDays > 0 ? Math.min(1, usedDaysAdjusted / totalDays) : 0;
+              const free = Math.max(0, totalDays - usedDays);
+              const pct = totalDays > 0 ? Math.min(1, usedDays / totalDays) : 0;
               const col = capacityColor(usedDays, totalDays);
               return (
                 <div key={m.key} style={{ flex: 1, minWidth: 100, borderRight: '0.5px solid #e2e8f0', padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -805,7 +804,7 @@ export function SviluppoView({ staff, clients = [], isAdmin = false, filterSearc
                                 {(c.isFirst || !c.isCross) && <div style={{ fontSize: '11px', fontWeight: 500, color: c.isCompleted ? '#94a3b8' : '#0f172a', lineHeight: 1.3, marginBottom: 3, paddingRight: c.isCross ? 12 : 0, textDecoration: c.isCompleted ? 'line-through' : 'none' }}>{c.title}{c.isCompleted && <span style={{ marginLeft: 4, fontSize: 9, background: '#e2e8f0', color: '#64748b', borderRadius: 3, padding: '1px 4px', fontWeight: 600, textDecoration: 'none', display: 'inline-block' }}>{c.colonna || 'chiusa'}</span>}</div>}
                                 {c.isCross && !c.isFirst && <div style={{ fontSize: '10px', color: '#7c3aed', fontStyle: 'italic', marginBottom: 3 }}>&#8617; {c.title}</div>}
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
-                                  <span style={{ fontSize: '10px', color: '#94a3b8', fontFamily: 'monospace' }}>{c.hours}h</span>
+                                  <span style={{ fontSize: '10px', color: '#94a3b8', fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums' }}>{c.hours}h</span>
                                   {c.isFirst && c.dataInizio && <span style={{ fontSize: '10px', color: '#475569' }}>dal {c.dataInizio.split('-').reverse().slice(0,2).join('/')}</span>}
                                   {c.isLast && c.dataFine && <span style={{ fontSize: '10px', color: c.isCross ? '#7c3aed' : '#185FA5', fontWeight: 500 }}>al {c.dataFine.split('-').reverse().slice(0,2).join('/')}</span>}
                                 </div>
@@ -822,7 +821,7 @@ export function SviluppoView({ staff, clients = [], isAdmin = false, filterSearc
                               {simulation.isReplan && <span style={{ fontSize: '9px', background: '#fef9c3', color: '#854d0e', borderRadius: '3px', padding: '1px 4px', fontWeight: 600 }}>↻</span>}
                               {simulation.title}
                             </div>
-                            <div style={{ fontSize: '10px', color: '#0F6E56', fontFamily: 'monospace', marginBottom: 4 }}>{simulation.hours}h stimate</div>
+                            <div style={{ fontSize: '10px', color: '#0F6E56', fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums', marginBottom: 4 }}>{simulation.hours}h stimate</div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 6 }}>
                               <div style={{ fontSize: '10px', color: '#475569', display: 'flex', alignItems: 'center', gap: 3 }}>
                                 <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
@@ -855,12 +854,12 @@ export function SviluppoView({ staff, clients = [], isAdmin = false, filterSearc
                           const todayNow = new Date(); todayNow.setHours(0,0,0,0);
                           const todayKeyNow = `${todayNow.getFullYear()}-${String(todayNow.getMonth()+1).padStart(2,'0')}`;
                           const [myCel, mmCel] = m.key.split('-').map(Number);
-                          const availableWd = workingDaysInMonth(myCel, mmCel-1, true);
-                          const passedWdCell = m.key === todayKeyNow ? workingDaysInMonth(myCel, mmCel-1) - availableWd : 0;
-                          const usedDaysAdj = Math.max(0, usedDays - passedWdCell);
-                          const freeDays = Math.max(0, availableWd - usedDaysAdj);
-                          const pct = availableWd > 0 ? Math.min(1, usedDaysAdj / availableWd) : 0;
-                          const col = capacityColor(usedDaysAdj, availableWd);
+                          const todayKeyNowCheck = `${todayNow.getFullYear()}-${String(todayNow.getMonth()+1).padStart(2,'0')}`;
+                          // giorni residui: da domani se mese corrente, tutti se mese futuro
+                          const availableWd = workingDaysInMonth(myCel, mmCel-1, m.key === todayKeyNowCheck);
+                          const freeDays = Math.max(0, availableWd - usedDays);
+                          const pct = availableWd > 0 ? Math.min(1, usedDays / availableWd) : 0;
+                          const col = capacityColor(usedDays, availableWd);
                           return (
                             <div style={{ marginTop: 'auto', paddingTop: 4 }}>
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
@@ -952,19 +951,19 @@ export function SviluppoView({ staff, clients = [], isAdmin = false, filterSearc
               {reschedulePreview.changes.map((c, i) => (
                 <div key={c.att.id} style={{ border: '0.5px solid #e2e8f0', borderRadius: '10px', overflow: 'hidden' }}>
                   <div style={{ padding: '8px 12px', background: '#f8fafc', display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: '11px', color: '#94a3b8', fontFamily: 'monospace', flexShrink: 0 }}>#{i + 1}</span>
+                    <span style={{ fontSize: '11px', color: '#94a3b8', fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>#{i + 1}</span>
                     <span style={{ fontSize: '13px', fontWeight: 500, color: '#0f172a', flex: 1 }}>{c.att.titolo}</span>
-                    {c.att.stima_ore && <span style={{ fontSize: '10px', color: '#0C447C', background: '#E6F1FB', border: '0.5px solid #B5D4F4', borderRadius: '4px', padding: '1px 6px', fontFamily: 'monospace' }}>{c.att.stima_ore}h</span>}
+                    {c.att.stima_ore && <span style={{ fontSize: '10px', color: '#0C447C', background: '#E6F1FB', border: '0.5px solid #B5D4F4', borderRadius: '4px', padding: '1px 6px', fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums' }}>{c.att.stima_ore}h</span>}
                   </div>
                   <div style={{ padding: '8px 12px', display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 8, alignItems: 'center' }}>
                     <div style={{ background: '#fef2f2', border: '0.5px solid #fecaca', borderRadius: '6px', padding: '5px 8px' }}>
                       <div style={{ fontSize: '9px', color: '#dc2626', fontWeight: 600, textTransform: 'uppercase', marginBottom: 2 }}>Prima</div>
-                      <div style={{ fontSize: '11px', color: '#7f1d1d', fontFamily: 'monospace' }}>{c.oldInizio.split('-').reverse().join('/')} → {c.oldFine.split('-').reverse().join('/')}</div>
+                      <div style={{ fontSize: '11px', color: '#7f1d1d', fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums' }}>{c.oldInizio.split('-').reverse().join('/')} → {c.oldFine.split('-').reverse().join('/')}</div>
                     </div>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
                     <div style={{ background: '#f0fdf4', border: '0.5px solid #bbf7d0', borderRadius: '6px', padding: '5px 8px' }}>
                       <div style={{ fontSize: '9px', color: '#16a34a', fontWeight: 600, textTransform: 'uppercase', marginBottom: 2 }}>Dopo</div>
-                      <div style={{ fontSize: '11px', color: '#14532d', fontFamily: 'monospace' }}>{c.newInizio.split('-').reverse().join('/')} → {c.newFine.split('-').reverse().join('/')}</div>
+                      <div style={{ fontSize: '11px', color: '#14532d', fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums' }}>{c.newInizio.split('-').reverse().join('/')} → {c.newFine.split('-').reverse().join('/')}</div>
                     </div>
                   </div>
                 </div>

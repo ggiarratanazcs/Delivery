@@ -111,16 +111,16 @@ export function PopupConsuntivi({ commessa, staffNome, codiceOperatore, annoMese
           {!loading && righe.length > 0 && (
             <div style={{ display: 'flex', gap: 16, marginTop: 12 }}>
               <div style={{ background: 'rgba(255,255,255,0.1)', borderRadius: 8, padding: '6px 14px', textAlign: 'center' }}>
-                <div style={{ fontSize: 18, fontWeight: 700, color: '#fff', fontFamily: 'monospace' }}>{totGiorni}</div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: '#fff', fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums' }}>{totGiorni}</div>
                 <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>giorni</div>
               </div>
               <div style={{ background: 'rgba(255,255,255,0.1)', borderRadius: 8, padding: '6px 14px', textAlign: 'center' }}>
-                <div style={{ fontSize: 18, fontWeight: 700, color: '#fff', fontFamily: 'monospace' }}>{totOre.toFixed(1)}h</div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: '#fff', fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums' }}>{totOre.toFixed(1)}h</div>
                 <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>ore tecniche</div>
               </div>
               {totPagamento > 0 && (
                 <div style={{ background: 'rgba(255,255,255,0.1)', borderRadius: 8, padding: '6px 14px', textAlign: 'center' }}>
-                  <div style={{ fontSize: 18, fontWeight: 700, color: '#FAC775', fontFamily: 'monospace' }}>{totPagamento.toFixed(1)}h</div>
+                  <div style={{ fontSize: 18, fontWeight: 700, color: '#FAC775', fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums' }}>{totPagamento.toFixed(1)}h</div>
                   <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>ore pagamento</div>
                 </div>
               )}
@@ -186,7 +186,7 @@ export function PopupConsuntivi({ commessa, staffNome, codiceOperatore, annoMese
                     }}
                   >
                     {/* Data */}
-                    <div style={{ fontSize: 11, color: '#64748b', fontFamily: 'monospace', fontWeight: 500 }}>
+                    <div style={{ fontSize: 11, color: '#64748b', fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums', fontWeight: 500 }}>
                       {r.codice_bolla || '—'}
                     </div>
 
@@ -196,7 +196,7 @@ export function PopupConsuntivi({ commessa, staffNome, codiceOperatore, annoMese
                     </div>
 
                     {/* Ore tecniche */}
-                    <div style={{ textAlign: 'right', fontSize: 12, fontWeight: 600, color: '#0054a6', fontFamily: 'monospace' }}>
+                    <div style={{ textAlign: 'right', fontSize: 12, fontWeight: 600, color: '#0054a6', fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums' }}>
                       {parseFloat(r.ore_tecniche || 0).toFixed(1)}h
                     </div>
 

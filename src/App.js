@@ -42,8 +42,8 @@ import { KpiPianificazione } from './components/KpiPianificazione.jsx';
 import { PopupConsuntivi } from './components/ConsuntiviPopup.jsx';
 
 const customStyles = `
-  /* Disabilita zero barrato — IBM Plex Mono usa slashed-zero per default */
-  * { font-feature-settings: 'zero' 0 !important; font-variant-numeric: normal !important; }
+  /* Numeri tabulari senza zero barrato su elementi con font ereditato */
+  [style*="tabular-nums"], .font-tabular { font-variant-numeric: tabular-nums; font-feature-settings: 'tnum' 1, 'zero' 0; }
   .skills-table { border-collapse: separate; border-spacing: 3px; }
   .skills-table th, .skills-table td { min-width: 100px; max-width: 100px; width: 100px; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border-radius: 6px; }
   .skills-table th.sticky-col, .skills-table td.sticky-col { min-width: 180px; max-width: 180px; width: 180px; text-align: left; border-right: none; border-radius: 8px; }
