@@ -1148,6 +1148,164 @@ function KpiPanel({ activeKpi, onClose, onNavigate, onGestisciClienti, onNuovaCo
   );
 }
 
+
+// ── AccordionPersonale — attività/commesse/progetti dell'utente loggato ───────
+function AccordionPersonale({ tipo, userOverride, clients, onOpenProgetto }) {
+  const [open, setOpen] = React.useState(false);
+  const [items, setItems] = React.useState([]);
+  const [loading, setLoading] = React.useState(false);
+  const [loaded, setLoaded] = React.useState(false);
+
+  const myKey = userOverride ? `${userOverride.cognome} ${userOverride.nome}` : null;
+  const myId  = userOverride?.id || null;
+
+  const colonneChiuse = React.useRef(new Set());
+
+  const loadItems = React.useCallback(async () => {
+    if (loaded || !myKey) return;
+    setLoading(true);
+    try {
+      if (tipo === 'attivita') {
+        // Carica colonne chiuse/annullate
+        const { data: cols } = await supabase.from('workflow_colonne').select('id, nome');
+        const chiuse = new Set((cols || []).filter(c => /complet|annullat|done|chiusa/i.test(c.nome)).map(c => c.id));
+        colonneChiuse.current = chiuse;
+        // Attività assegnate a questa risorsa non chiuse
+        const { data: att } = await supabase
+          .from('attivita')
+          .select('id, titolo, priorita, colonna_id, commessa_id, colonna:colonna_id(nome)')
+          .or(`assegnata_a.eq.${myKey},pm.eq.${myKey}`);
+        const aperte = (att || []).filter(a => !chiuse.has(a.colonna_id));
+        // Arricchisci con nome cliente
+        const allComm = (clients || []).flatMap(c => (c.commesse || []).map(co => ({ ...co, clientName: c.nome_progetto })));
+        setItems(aperte.map(a => {
+          const comm = allComm.find(co => co.id === a.commessa_id);
+          return { ...a, clientName: comm?.clientName || null, commessaNome: comm?.nome_commessa || null };
+        }));
+      } else if (tipo === 'commesse') {
+        const allComm = (clients || []).flatMap(c =>
+          (c.commesse || [])
+            .filter(co => co.attiva !== false)
+            .filter(co => co.pm_commessa === myKey || (co.team || []).includes(myKey))
+            .map(co => ({ ...co, clientName: c.nome_progetto, clientId: c.id }))
+        );
+        setItems(allComm);
+      } else if (tipo === 'progetti') {
+        // Commesse attive in cui è coinvolto
+        const allComm = (clients || []).flatMap(c =>
+          (c.commesse || [])
+            .filter(co => co.attiva !== false)
+            .filter(co => co.pm_commessa === myKey || (co.team || []).includes(myKey))
+            .map(co => ({ ...co, clientName: c.nome_progetto }))
+        );
+        // Carica progetti collegati
+        const commIds = allComm.map(co => co.id);
+        if (commIds.length === 0) { setItems([]); setLoaded(true); setLoading(false); return; }
+        const { data: proj } = await supabase
+          .from('progetti')
+          .select('id, commessa_id, chiuso')
+          .in('commessa_id', commIds)
+          .eq('chiuso', false);
+        setItems((proj || []).map(p => {
+          const comm = allComm.find(co => co.id === p.commessa_id);
+          return { ...p, clientName: comm?.clientName, commessaNome: comm?.nome_commessa };
+        }));
+      }
+    } catch(e) { console.error('Accordion load error:', e); }
+    setLoaded(true);
+    setLoading(false);
+  }, [tipo, myKey, clients, loaded]);
+
+  const handleToggle = () => {
+    if (!open && !loaded) loadItems();
+    setOpen(v => !v);
+  };
+
+  const PCOLOR = { alta: { bg: '#FCEBEB', text: '#A32D2D' }, media: { bg: '#FAEEDA', text: '#633806' }, bassa: { bg: '#EAF3DE', text: '#27500A' } };
+
+  const configs = {
+    attivita:  { icon: 'ti-checkbox',  label: 'Le attività in carico a te',  color: '#185FA5', badgeBg: '#E6F1FB', badgeText: '#0C447C' },
+    commesse:  { icon: 'ti-briefcase', label: 'Le commesse in cui lavori',    color: '#0F6E56', badgeBg: '#E1F5EE', badgeText: '#085041' },
+    progetti:  { icon: 'ti-folder',    label: 'I progetti in cui lavori',     color: '#854F0B', badgeBg: '#FAEEDA', badgeText: '#633806' },
+  };
+  const cfg = configs[tipo];
+
+  const handleClick = (item) => {
+    if (tipo === 'progetti' && onOpenProgetto) {
+      onOpenProgetto(item.id, item.commessa_id);
+    }
+    // commesse e attività: navigazione futura
+  };
+
+  return (
+    <div style={{ background: '#fff', border: '0.5px solid #e2e8f0', borderRadius: '12px', overflow: 'hidden' }}>
+      <div onClick={handleToggle}
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', cursor: 'pointer', userSelect: 'none' }}
+        onMouseOver={e => e.currentTarget.style.background = '#fafbfc'}
+        onMouseOut={e => e.currentTarget.style.background = 'transparent'}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <i className={`ti ${cfg.icon}`} style={{ fontSize: 16, color: cfg.color }} aria-hidden="true" />
+          <span style={{ fontSize: 14, fontWeight: 500, color: '#0f172a' }}>{cfg.label}</span>
+          {loaded && (
+            <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: cfg.badgeBg, color: cfg.badgeText, fontWeight: 500 }}>{items.length}</span>
+          )}
+        </div>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+          style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', flexShrink: 0 }}>
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </div>
+
+      {open && (
+        <div style={{ borderTop: '0.5px solid #e2e8f0' }}>
+          {loading && (
+            <div style={{ padding: '16px 18px', fontSize: 13, color: '#94a3b8', fontStyle: 'italic' }}>Caricamento...</div>
+          )}
+          {!loading && items.length === 0 && (
+            <div style={{ padding: '16px 18px', fontSize: 13, color: '#94a3b8', fontStyle: 'italic' }}>Nessun elemento</div>
+          )}
+          {!loading && items.map((item, i) => (
+            <div key={item.id || i}
+              onClick={() => handleClick(item)}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 18px', borderBottom: i < items.length - 1 ? '0.5px solid #f1f5f9' : 'none', cursor: tipo === 'progetti' ? 'pointer' : 'default', transition: 'background 0.1s' }}
+              onMouseOver={e => { if(tipo === 'progetti') e.currentTarget.style.background = '#f8fafc'; }}
+              onMouseOut={e => { e.currentTarget.style.background = 'transparent'; }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                <div style={{ width: 7, height: 7, borderRadius: '50%', background: cfg.color, flexShrink: 0 }} />
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {tipo === 'attivita' ? item.titolo
+                      : tipo === 'commesse' ? item.nome_commessa
+                      : `${item.clientName} — ${item.commessaNome}`}
+                  </div>
+                  {(item.clientName || item.commessaNome) && (
+                    <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 1 }}>
+                      {tipo === 'attivita' ? (item.clientName || item.commessaNome || '')
+                        : tipo === 'commesse' ? item.clientName
+                        : ''}
+                    </div>
+                  )}
+                </div>
+              </div>
+              {tipo === 'attivita' && item.priorita && (
+                <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: (PCOLOR[item.priorita] || PCOLOR.media).bg, color: (PCOLOR[item.priorita] || PCOLOR.media).text, fontWeight: 500, flexShrink: 0, marginLeft: 8 }}>{item.priorita}</span>
+              )}
+              {tipo === 'commesse' && (
+                <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: '#E1F5EE', color: '#085041', fontWeight: 500, flexShrink: 0, marginLeft: 8 }}>
+                  {item.pm_commessa === myKey ? 'PM' : 'team'}
+                </span>
+              )}
+              {tipo === 'progetti' && (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginLeft: 8 }}><path d="m9 18 6-6-6-6"/></svg>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function KPIView({ staff, matrix, clients, assignments, skillsConfig, currentMonths, trainingCells, onOpenProgetto, userOverride, isAdmin, onNuovaCommessa, onNavigate, onGestisciClienti, onNuovaCommessaDiretta }) {
   const [entity, setEntity] = useState(userOverride?.defaultEntity || null);
   const [selected, setSelected] = useState(userOverride?.defaultSelected || '');
@@ -1239,7 +1397,15 @@ export function KPIView({ staff, matrix, clients, assignments, skillsConfig, cur
         <div style={{ padding: isMobile ? '20px 16px' : '28px 32px' }}>
           <div style={{ fontSize: '11px', color: '#94a3b8', letterSpacing: '.1em', textTransform: 'uppercase', marginBottom: '8px' }}>ZCS · Portale Delivery</div>
           <div style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: 500, color: '#0f172a', marginBottom: '4px' }}>
-            Benvenuto, {userOverride?.nome || staff.find(s => s.is_admin)?.nome || 'Admin'}
+            {(() => {
+              const u = userOverride;
+              const nome = u?.nome || '';
+              const cognome = u?.cognome || '';
+              const vocale = /^[aeiouAEIOU]/.test(nome);
+              const genere = u?.genere; // 'M' o 'F' se disponibile, altrimenti default maschile
+              const benv = genere === 'F' ? 'Benvenuta' : 'Benvenuto';
+              return `${benv}, ${nome}${cognome ? ' ' + cognome : ''}`.trim() || 'Benvenuto';
+            })()}
           </div>
           <div style={{ fontSize: '13px', color: '#64748b' }}>
             {new Date().toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} · {userOverride?.ruolo || 'Operation Manager'}
@@ -1265,39 +1431,77 @@ export function KPIView({ staff, matrix, clients, assignments, skillsConfig, cur
       </div>
 
       {kpi && (
-        <div style={{ padding: isMobile ? '16px 16px 0' : '24px 32px 0', display: 'grid', gridTemplateColumns: '120px 1fr 1fr 1fr 1fr', gap: '12px', alignItems: 'stretch' }}>
-          <div onClick={() => onNuovaCommessa && onNuovaCommessa()}
-            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, cursor: 'pointer' }}>
-            <div style={{ width: 56, height: 56, borderRadius: '50%', background: '#001d47', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.18s', boxShadow: '0 4px 18px rgba(0,29,71,0.35)' }}
-              onMouseOver={e => { e.currentTarget.style.background = '#0d3470'; e.currentTarget.style.boxShadow = '0 6px 24px rgba(0,29,71,0.45)'; }} onMouseOut={e => { e.currentTarget.style.background = '#001d47'; e.currentTarget.style.boxShadow = '0 4px 18px rgba(0,29,71,0.35)'; }}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        <div style={{ padding: isMobile ? '16px' : '24px 32px 0', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 380px', gap: '24px', alignItems: 'start' }}>
+
+          {/* ── COLONNA SINISTRA: cerchio + accordion ── */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+
+            {/* Cerchio Nuova attività */}
+            <div style={{ background: '#fff', border: '0.5px solid #e2e8f0', borderRadius: '16px', padding: '28px 24px', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 130 }}>
+              <div onClick={() => onNuovaCommessa && onNuovaCommessa()}
+                style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+                <div style={{ width: 68, height: 68, borderRadius: '50%', background: '#001d47', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.18s', boxShadow: '0 4px 18px rgba(0,29,71,0.35)' }}
+                  onMouseOver={e => { e.currentTarget.style.background = '#0d3470'; }}
+                  onMouseOut={e => { e.currentTarget.style.background = '#001d47'; }}>
+                  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                </div>
+                <div style={{ fontSize: 12, fontWeight: 500, color: '#001d47', textAlign: 'center' }}>Nuova attività</div>
+              </div>
             </div>
-            <div style={{ fontSize: 11, fontWeight: 500, color: '#001d47', textAlign: 'center', whiteSpace: 'nowrap' }}>Nuova attività</div>
+
+            {/* Accordion 1 — Attività in carico */}
+            <AccordionPersonale
+              tipo="attivita"
+              userOverride={userOverride}
+              clients={clients}
+              onOpenProgetto={onOpenProgetto}
+            />
+
+            {/* Accordion 2 — Commesse */}
+            <AccordionPersonale
+              tipo="commesse"
+              userOverride={userOverride}
+              clients={clients}
+              onOpenProgetto={onOpenProgetto}
+            />
+
+            {/* Accordion 3 — Progetti */}
+            <AccordionPersonale
+              tipo="progetti"
+              userOverride={userOverride}
+              clients={clients}
+              onOpenProgetto={onOpenProgetto}
+            />
           </div>
-          {[
-            { key: 'risorsa', color: '#0F6E56', label: 'Risorse', num: kpi.nRisorse, rows: RUOLI_ORDER_KPI.filter(r => kpi.ruoliCount[r]).map(r => [r, kpi.ruoliCount[r], '#0F6E56']).concat(Object.entries(kpi.ruoliCount).filter(([r]) => !RUOLI_ORDER_KPI.includes(r)).map(([r,c]) => [r, c, '#0F6E56'])) },
-            { key: 'cliente', color: '#185FA5', label: 'Clienti attivi', num: kpi.nClientiAttivi, rows: Object.entries(kpi.prodottiCount).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([p,c]) => [p, c, '#185FA5']) },
-            { key: 'commessa', color: '#854F0B', label: 'Commesse aperte', num: kpi.nCommesseAttive, rows: [['Sviluppo aperte', kpi.nAttivitaSviluppoAperte, '#854F0B']] },
-            { key: 'bolle', color: '#534AB7', label: 'Bolle', num: kpi.nBolle, rows: [['Previsto', Math.round(kpi.totGgPrevisti)+'gg', '#534AB7'], ['Consuntivato', Math.round(kpi.totGgFatti)+'gg', '#534AB7'], ['Residuo', Math.round(kpi.residuo)+'gg', kpi.residuo >= 0 ? '#0F6E56' : '#dc2626'], ...(kpi.efficacia != null ? [['Efficacia', Math.round(kpi.efficacia)+'%', kpi.efficacia >= 75 ? '#0F6E56' : kpi.efficacia >= 60 ? '#854F0B' : '#dc2626']] : [])] },
-          ].map(card => (
-            <div key={card.key} onClick={() => setActiveKpi(activeKpi === card.key ? null : card.key)}
-              style={{ background: '#fff', border: activeKpi === card.key ? '1.5px solid ' + card.color : '1px solid #e2e8f0', borderRadius: 16, padding: '18px 20px', boxShadow: activeKpi === card.key ? '0 8px 32px rgba(0,0,0,0.13)' : '0 2px 16px rgba(0,0,0,0.07), 0 1px 4px rgba(0,0,0,0.04)', position: 'relative', overflow: 'hidden', cursor: 'pointer', transition: 'border-color 0.18s', display: 'flex', flexDirection: 'column', minHeight: 160 }}>
-              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: card.color, borderRadius: '16px 16px 0 0' }} />
-              <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>{card.label}</div>
-              <div style={{ fontSize: 32, fontWeight: 700, color: '#0f172a', lineHeight: 1, marginBottom: 12 }}>{card.num}</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 5, borderTop: '1px solid #f1f5f9', paddingTop: 10, flex: 1 }}>
-                {card.rows.map(([lbl, val, col], i) => (
-                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: 11, color: '#64748b' }}>{lbl}</span>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: col }}>{val}</span>
-                  </div>
-                ))}
+
+          {/* ── COLONNA DESTRA: 4 card KPI ── */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            {[
+              { key: 'risorsa', color: '#0F6E56', label: 'Risorse', num: kpi.nRisorse, rows: RUOLI_ORDER_KPI.filter(r => kpi.ruoliCount[r]).map(r => [r, kpi.ruoliCount[r], '#0F6E56']).concat(Object.entries(kpi.ruoliCount).filter(([r]) => !RUOLI_ORDER_KPI.includes(r)).map(([r,c]) => [r, c, '#0F6E56'])) },
+              { key: 'cliente', color: '#185FA5', label: 'Clienti attivi', num: kpi.nClientiAttivi, rows: Object.entries(kpi.prodottiCount).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([p,c]) => [p, c, '#185FA5']) },
+              { key: 'commessa', color: '#854F0B', label: 'Commesse aperte', num: kpi.nCommesseAttive, rows: [['Sviluppo aperte', kpi.nAttivitaSviluppoAperte, '#854F0B']] },
+              { key: 'bolle', color: '#534AB7', label: 'Bolle', num: kpi.nBolle, rows: [['Previsto', Math.round(kpi.totGgPrevisti)+'gg', '#534AB7'], ['Consuntivato', Math.round(kpi.totGgFatti)+'gg', '#534AB7'], ['Residuo', Math.round(kpi.residuo)+'gg', kpi.residuo >= 0 ? '#0F6E56' : '#dc2626'], ...(kpi.efficacia != null ? [['Efficacia', Math.round(kpi.efficacia)+'%', kpi.efficacia >= 75 ? '#0F6E56' : kpi.efficacia >= 60 ? '#854F0B' : '#dc2626']] : [])] },
+            ].map(card => (
+              <div key={card.key} onClick={() => setActiveKpi(activeKpi === card.key ? null : card.key)}
+                style={{ background: '#fff', border: activeKpi === card.key ? '1.5px solid ' + card.color : '1px solid #e2e8f0', borderRadius: 16, padding: '18px 20px', boxShadow: activeKpi === card.key ? '0 8px 32px rgba(0,0,0,0.13)' : '0 2px 16px rgba(0,0,0,0.07), 0 1px 4px rgba(0,0,0,0.04)', position: 'relative', overflow: 'hidden', cursor: 'pointer', transition: 'border-color 0.18s', display: 'flex', flexDirection: 'column', minHeight: 160 }}>
+                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: card.color, borderRadius: '16px 16px 0 0' }} />
+                <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>{card.label}</div>
+                <div style={{ fontSize: 32, fontWeight: 700, color: '#0f172a', lineHeight: 1, marginBottom: 12 }}>{card.num}</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 5, borderTop: '1px solid #f1f5f9', paddingTop: 10, flex: 1 }}>
+                  {card.rows.map(([lbl, val, col], i) => (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: 11, color: '#64748b' }}>{lbl}</span>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: col }}>{val}</span>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 6, borderTop: '1px solid #f1f5f9', marginTop: 4 }}>
+                  <svg style={{ animation: 'kpiBounce 1.8s ease-in-out infinite', opacity: activeKpi === card.key ? 1 : 0.7 }} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={activeKpi === card.key ? card.color : '#94a3b8'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                </div>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 6, borderTop: '1px solid #f1f5f9', marginTop: 4 }}>
-                <svg style={{ animation: 'kpiBounce 1.8s ease-in-out infinite', opacity: activeKpi === card.key ? 1 : 0.7 }} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={activeKpi === card.key ? card.color : '#94a3b8'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
+
         </div>
       )}
 

@@ -90,6 +90,37 @@ function VistaDropdown({ options, value, onChange }) {
   );
 }
 
+// ── SearchLens collassabile per TodoView ─────────────────────────────────────
+function SearchLensTodo({ value, onChange }) {
+  const [open, setOpen] = React.useState(false);
+  const ref = React.useRef(null);
+  React.useEffect(() => { if (open && ref.current) ref.current.focus(); }, [open]);
+  React.useEffect(() => { if (value) setOpen(true); }, [value]);
+  return (
+    <div style={{ display: 'flex', alignItems: 'center' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: open ? '#f8fafc' : 'transparent', border: open ? '1px solid #e2e8f0' : '1px solid transparent', borderRadius: 20, padding: open ? '4px 10px 4px 8px' : '4px', transition: 'all 0.2s', cursor: 'pointer' }}
+        onClick={() => !open && setOpen(true)}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+          stroke={open ? '#0054a6' : '#94a3b8'} strokeWidth="2"
+          strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}
+          onClick={e => { if (open) { e.stopPropagation(); setOpen(false); onChange(''); } }}>
+          <circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/>
+        </svg>
+        {open && (
+          <input ref={ref} type="text" value={value} onChange={e => onChange(e.target.value)}
+            placeholder="Titolo, PM, cliente, assegnatario..."
+            onBlur={() => { if (!value) setOpen(false); }}
+            style={{ border: 'none', outline: 'none', background: 'transparent', fontSize: 12, width: 200, color: '#0f172a', fontFamily: 'inherit' }} />
+        )}
+        {open && value && (
+          <span onClick={e => { e.stopPropagation(); onChange(''); }}
+            style={{ cursor: 'pointer', color: '#94a3b8', fontSize: 14, lineHeight: 1 }}>×</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function TodoView({ staff, clients, openCardId, onCardOpened, isAdmin = false }) {
   const [workflows, setWorkflows] = useState([]);
   const [colonne, setColonne] = useState([]);
@@ -113,7 +144,8 @@ export function TodoView({ staff, clients, openCardId, onCardOpened, isAdmin = f
   const [teamProdottoList, setTeamProdottoList] = useState([]);
 
   const [dragCard, setDragCard] = useState(null);
-  const [agingConfigMap, setAgingConfigMap] = useState({}); // { colonna_id: { aging_attivo, soglia_gialla, soglia_rossa } }
+  const [agingConfigMap, setAgingConfigMap] = useState({});
+  const [searchTodo, setSearchTodo] = useState(''); // { colonna_id: { aging_attivo, soglia_gialla, soglia_rossa } }
   const [dragOver, setDragOver] = useState(null);
 
   const isMobile = useIsMobile();
@@ -225,6 +257,21 @@ export function TodoView({ staff, clients, openCardId, onCardOpened, isAdmin = f
         return true;
       })
     : currentAttivita;
+
+  // Filtro ricerca full-text
+  const attivitaFiltrate = searchTodo.trim()
+    ? attivitaVista.filter(a => {
+        const q = searchTodo.toLowerCase();
+        return (
+          (a.titolo || '').toLowerCase().includes(q) ||
+          (a.descrizione || '').toLowerCase().includes(q) ||
+          (a.pm || '').toLowerCase().includes(q) ||
+          (a.assegnata_a || '').toLowerCase().includes(q) ||
+          (a.assegnatario || '').toLowerCase().includes(q) ||
+          (a.cliente_id && (clients || []).find(c => c.id === a.cliente_id)?.nome_progetto?.toLowerCase().includes(q))
+        );
+      })
+    : attivitaVista;
 
   const onDragStart = (card) => setDragCard(card);
 
@@ -346,6 +393,12 @@ export function TodoView({ staff, clients, openCardId, onCardOpened, isAdmin = f
               style={{ width: 32, height: 32, borderRadius: 8, border: '0.5px solid #e2e8f0', cursor: 'pointer', background: viewMode === 'lista' ? '#eff6ff' : 'transparent', color: viewMode === 'lista' ? '#0054a6' : '#94a3b8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
             </button>
+            <SearchLensTodo value={searchTodo} onChange={setSearchTodo} />
+            {searchTodo && (
+              <span style={{ fontSize: '11px', color: '#94a3b8' }}>
+                {attivitaFiltrate.length} risultat{attivitaFiltrate.length === 1 ? 'o' : 'i'}
+              </span>
+            )}
             <button
               onClick={() => { const primaCol = currentColonne.find(c => /nuova|richiesta|new/i.test(c.nome)) || currentColonne[0]; setEditCard(null); setTargetColId(primaCol?.id || null); setShowCardModal(true); }}
               style={{ display: 'flex', alignItems: 'center', gap: '7px', padding: isMobile ? '7px 12px' : '7px 18px', borderRadius: '20px', border: '1px solid #bfdbfe', background: '#eff6ff', color: '#0054a6', fontSize: '12px', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}
@@ -451,7 +504,7 @@ export function TodoView({ staff, clients, openCardId, onCardOpened, isAdmin = f
           <div style={{ display: 'flex', gap: isMobile ? '12px' : '20px', alignItems: 'flex-start', minWidth: 'max-content' }}>
 
             {colonneVista.map(col => {
-              const cards = attivitaVista.filter(a => a.colonna_id === col.id).sort((a, b) => a.ordine - b.ordine);
+              const cards = attivitaFiltrate.filter(a => a.colonna_id === col.id).sort((a, b) => a.ordine - b.ordine);
               const isDragTarget = dragOver === col.id;
               const isDragBlocked = dragCard && dragCard.colonna_id !== col.id && !isTransizioneConsentita(dragCard.colonna_id, col.id);
 
