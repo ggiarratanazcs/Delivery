@@ -214,7 +214,8 @@ export function ProgettoView({ progettoId, commessaId, clients, staff, currentUs
     const { data: attWf } = await supabase
       .from('attivita')
       .select('id, titolo, priorita, stato, data_rilascio, data_richiesta, in_carico_a, colonna:colonna_id(nome)')
-      .eq('commessa_id', commessaId);
+      .eq('commessa_id', commessaId)
+      .eq('tipo', 'sviluppo');
 
     if (attWf && attWf.length > 0) {
       // Carica i task sviluppo già presenti in progetto_task (quelli con attivita_id)
@@ -233,6 +234,7 @@ export function ProgettoView({ progettoId, commessaId, clients, staff, currentUs
         .eq('progetto_id', progettoId)
         .eq('reparto', 'SVILUPPO')
         .is('attivita', null)
+        .is('stato', null)
         .limit(1);
 
       let repartoSvilId = repartoSvil?.[0]?.task_id_display;
@@ -314,6 +316,8 @@ export function ProgettoView({ progettoId, commessaId, clients, staff, currentUs
 
     const { data: taskData } = await supabase.from('progetto_task').select('*').eq('progetto_id', progettoId).order('ordine');
     setTasks(taskData || []);
+    // Nota: i task sviluppo appena sincronizzati sono già inclusi in taskData
+    // perché l'INSERT avviene prima di questa SELECT
     const { data: progData } = await supabase.from('progetti').select('chiuso').eq('id', progettoId).single();
     const allComm = clients.flatMap(c => c.commesse.map(co => ({ ...co, clientName: c.nome_progetto })));
     const comm = allComm.find(co => co.id === commessaId) || null;
@@ -1612,21 +1616,24 @@ export function ProgettoGantt({ tasks, reparti, isReparto, onTaskClick, commessa
         <button onClick={() => { if(scrollRef.current && todayIdx >= 0) scrollRef.current.scrollLeft = Math.max(0, todayIdx * DAY_W - 300); }} style={{ padding: '5px 14px', borderRadius: '8px', border: '1px solid #bfdbfe', background: '#eff6ff', cursor: 'pointer', fontSize: '12px', fontWeight: 600, color: '#0054a6' }}>Oggi</button>
         <button onClick={() => { if(scrollRef.current) scrollRef.current.scrollLeft += DAY_W * 7; }} style={{ padding: '5px 14px', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#f8fafc', cursor: 'pointer', fontSize: '16px', color: '#475569' }}>›</button>
         <div style={{ width: 1, height: 20, background: '#e2e8f0', margin: '0 4px' }} />
-        <MultiPillFilter label="Stato" options={STATI_TASK} selected={filterStato} onChange={setFilterStato} />
-        <MultiPillFilter label="In carico" options={IN_CARICO_OPTIONS} selected={filterInCarico} onChange={setFilterInCarico} />
-        {(filterStato.length > 0 || filterInCarico.length > 0) && (
-          <button onClick={() => { setFilterStato([]); setFilterInCarico([]); }} style={{ padding: '4px 9px', borderRadius: '6px', border: '1px solid #fecaca', background: '#fef2f2', color: '#dc2626', fontSize: '11px', cursor: 'pointer' }}>✕</button>
-        )}
-        <button onClick={() => {
-          if (expandAll) { setExpandAll(false); const closed = {}; reparti.forEach(r => { closed[r] = false; }); setExpanded(closed); }
-          else { setExpandAll(true); setExpanded({}); }
-        }} style={{ padding: '5px 12px', borderRadius: '20px', border: '1px solid', fontSize: '11px', fontWeight: 600, cursor: 'pointer', ...(expandAll ? { background: '#eff6ff', borderColor: '#bfdbfe', color: '#0054a6' } : { background: '#f1f5f9', borderColor: '#e2e8f0', color: '#64748b' }) }}>
-          {expandAll ? '▼ Comprimi' : '▶ Espandi'}
-        </button>
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: '16px', fontSize: '11px', color: '#64748b', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '14px', fontSize: '11px', color: '#64748b', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><div style={{ width: 12, height: 12, borderRadius: '3px', background: '#1e40af' }} /> Previsto</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><div style={{ width: 12, height: 12, borderRadius: '3px', background: '#22c55e' }} /> Chiusa il</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><div style={{ width: 12, height: 12, borderRadius: '3px', background: '#f59e0b' }} /> In ritardo</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><div style={{ width: 12, height: 12, borderRadius: '3px', background: '#16a34a' }} /> Chiusa il</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><div style={{ width: 2, height: 14, background: '#ef4444' }} /> Oggi</div>
+        </div>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <MultiPillFilter label="Stato" options={STATI_TASK} selected={filterStato} onChange={setFilterStato} />
+          <MultiPillFilter label="In carico" options={IN_CARICO_OPTIONS} selected={filterInCarico} onChange={setFilterInCarico} />
+          {(filterStato.length > 0 || filterInCarico.length > 0) && (
+            <button onClick={() => { setFilterStato([]); setFilterInCarico([]); }} style={{ padding: '4px 9px', borderRadius: '6px', border: '1px solid #fecaca', background: '#fef2f2', color: '#dc2626', fontSize: '11px', cursor: 'pointer' }}>✕</button>
+          )}
+          <button onClick={() => {
+            if (expandAll) { setExpandAll(false); const closed = {}; reparti.forEach(r => { closed[r] = false; }); setExpanded(closed); }
+            else { setExpandAll(true); setExpanded({}); }
+          }} style={{ padding: '5px 12px', borderRadius: '20px', border: '1px solid', fontSize: '11px', fontWeight: 600, cursor: 'pointer', ...(expandAll ? { background: '#eff6ff', borderColor: '#bfdbfe', color: '#0054a6' } : { background: '#f1f5f9', borderColor: '#e2e8f0', color: '#64748b' }) }}>
+            {expandAll ? '▼ Comprimi' : '▶ Espandi'}
+          </button>
         </div>
       </div>
 
@@ -1710,7 +1717,7 @@ export function ProgettoGantt({ tasks, reparti, isReparto, onTaskClick, commessa
                   let dot = null;
                   // ── Linea orizzontale sul modulo (da prima a ultima data) ──
                   if (row.type === 'reparto') {
-                    const repartoTasks = tasks.filter(t => !isReparto(t) && t.reparto === row.reparto);
+                    const repartoTasks = tasks.filter(t => !isReparto(t) && t.reparto === row.label);
                     const taskDates = repartoTasks.flatMap(t => [
                       t.previsto ? dayIndex(t.previsto) : -1,
                       t.collaudo ? dayIndex(t.collaudo) : -1,
