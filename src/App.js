@@ -1211,7 +1211,12 @@ export default function App() {
                     return [{ key: 'clients', label: 'Clienti' }, { key: 'commesse', label: 'Commesse' }].map(btn => {
                       const isActive = state[btn.key];
                       return (
-                        <div key={btn.key} onClick={() => setter(prev => ({ ...prev, [btn.key]: !prev[btn.key] }))}
+                        <div key={btn.key} onClick={() => {
+                          const next = !state[btn.key];
+                          setter(prev => ({ ...prev, [btn.key]: next }));
+                          // Se si comprime, svuota anche gli expandedItems aperti manualmente
+                          if (!next) setExpandedItems({});
+                        }}
                           style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: isActive ? 500 : 400, color: isActive ? '#0054a6' : '#94a3b8', cursor: 'pointer', padding: '4px 2px', borderBottom: isActive ? '1.5px solid #0054a6' : '1.5px solid transparent', transition: 'all 0.15s', userSelect: 'none' }}>
                           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: isActive ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.15s' }}><polyline points="6 9 12 15 18 9"/></svg>
                           {btn.label}
@@ -1225,7 +1230,12 @@ export default function App() {
                     return [{ key: 'clients', label: 'Clienti' }, { key: 'commesse', label: 'Commesse' }].map(btn => {
                       const isActive = state[btn.key];
                       return (
-                        <div key={btn.key} onClick={() => setter(prev => ({ ...prev, [btn.key]: !prev[btn.key] }))}
+                        <div key={btn.key} onClick={() => {
+                          const next = !state[btn.key];
+                          setter(prev => ({ ...prev, [btn.key]: next }));
+                          // Se si comprime, svuota anche gli expandedItems aperti manualmente
+                          if (!next) setExpandedItems({});
+                        }}
                           style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: isActive ? 500 : 400, color: isActive ? '#0054a6' : '#94a3b8', cursor: 'pointer', padding: '4px 2px', borderBottom: isActive ? '1.5px solid #0054a6' : '1.5px solid transparent', transition: 'all 0.15s', userSelect: 'none' }}>
                           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: isActive ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.15s' }}><polyline points="6 9 12 15 18 9"/></svg>
                           {btn.label}

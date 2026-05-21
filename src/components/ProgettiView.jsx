@@ -211,21 +211,23 @@ export function ProgettoView({ progettoId, commessaId, clients, staff, currentUs
 
     // ── Sincronizza attività workflow della commessa → progetto_task ──────────
     // Carica attività workflow collegate alla commessa
-    const { data: attWf } = await supabase
+    const { data: attWf, error: attWfError } = await supabase
       .from('attivita')
-      .select('id, titolo, priorita, stato, data_rilascio, data_richiesta, in_carico_a, colonna:colonna_id(nome)')
-      .eq('commessa_id', commessaId)
-      .eq('tipo', 'sviluppo');
+      .select('id, titolo, priorita, data_rilascio, data_richiesta, colonna:colonna_id(nome)')
+      .eq('commessa_id', commessaId);
 
     if (attWf && attWf.length > 0) {
-      // Carica i task sviluppo già presenti in progetto_task (quelli con attivita_id)
+      // Carica i task SVILUPPO già presenti — usa attivita_id se disponibile,
+      // altrimenti fallback su titolo per evitare duplicati
       const { data: existingLinks } = await supabase
         .from('progetto_task')
-        .select('attivita_id')
+        .select('attivita_id, attivita')
         .eq('progetto_id', progettoId)
-        .not('attivita_id', 'is', null);
+        .eq('reparto', 'SVILUPPO')
+        .not('attivita', 'is', null);
 
-      const linkedIds = new Set((existingLinks || []).map(t => t.attivita_id));
+      const linkedIds = new Set((existingLinks || []).map(t => t.attivita_id).filter(Boolean));
+      const linkedTitoli = new Set((existingLinks || []).map(t => (t.attivita || '').trim().toLowerCase()).filter(Boolean));
 
       // Trova o crea la riga SVILUPPO reparto
       const { data: repartoSvil } = await supabase
@@ -277,7 +279,10 @@ export function ProgettoView({ progettoId, commessaId, clients, staff, currentUs
       }
 
       // Inserisci le attività workflow mancanti
-      const nuoveAttivita = attWf.filter(a => !linkedIds.has(a.id));
+      // Esclude se già linked per id O per titolo (fallback se attivita_id non esiste nel DB)
+      const nuoveAttivita = attWf.filter(a =>
+        !linkedIds.has(a.id) && !linkedTitoli.has((a.titolo || '').trim().toLowerCase())
+      );
       if (nuoveAttivita.length > 0) {
         const { data: figliCount } = await supabase
           .from('progetto_task')
@@ -295,7 +300,7 @@ export function ProgettoView({ progettoId, commessaId, clients, staff, currentUs
           attivita: a.titolo,
           priorita: a.priorita || 'media',
           stato: (() => {
-            const col = a.colonna?.nome || '';
+            const col = (a.colonna && a.colonna.nome) ? a.colonna.nome : '';
             if (/complet|done/i.test(col)) return 'Chiusa';
             if (/corso|progress/i.test(col)) return 'In Corso';
             if (/collaudo|test/i.test(col)) return 'Da collaudare';

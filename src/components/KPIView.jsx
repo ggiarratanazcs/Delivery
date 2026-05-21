@@ -6,6 +6,8 @@ import { ProdottiBadges } from './ProdottiSelector.jsx';
 import { creaTaskStandard } from './ProgettiView.jsx';
 import { Avatar } from './Avatar.jsx';
 import { useIsMobile } from './DesktopOnly.jsx';
+import { SchedaDemoModal, NuovoDocumentoModal } from './SchedaDemoModal.jsx';
+import { RaccoltaRequisitiModal } from './RaccoltaRequisitiModal.jsx';
 
 // SelectDropdown inline per evitare problemi di import
 function SelectDropdown({ options = [], value, onChange, placeholder = 'Scegli...', disabled = false }) {
@@ -1313,6 +1315,17 @@ export function KPIView({ staff, matrix, clients, assignments, skillsConfig, cur
   const [kpi, setKpi] = useState(null);
   const [kpiLoading, setKpiLoading] = useState(true);
   const [activeKpi, setActiveKpi] = useState(null);
+  const [showDocMenu, setShowDocMenu] = useState(false);
+  const [showSchedaDemo, setShowSchedaDemo] = useState(false);
+  const [showRaccoltaRequisiti, setShowRaccoltaRequisiti] = useState(false);
+  const docMenuRef = useRef(null);
+
+  // Chiudi menu documento cliccando fuori
+  useEffect(() => {
+    const handler = (e) => { if (docMenuRef.current && !docMenuRef.current.contains(e.target)) setShowDocMenu(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   const RUOLI_ORDER_KPI = ['PM', 'Project Manager', 'Consulente', 'Programmatore', 'Analista'];
 
@@ -1422,14 +1435,44 @@ export function KPIView({ staff, matrix, clients, assignments, skillsConfig, cur
 
           {/* SINISTRA */}
           <div>
-            <div style={{ marginBottom: 28 }}>
+            <div style={{ marginBottom: 28, display: 'flex', alignItems: 'flex-start', gap: 20 }}>
+              {/* NUOVA ATTIVITÀ */}
               <div onClick={() => onNuovaCommessa && onNuovaCommessa()} style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
                 <div style={{ width: 52, height: 52, borderRadius: '50%', background: '#001d47', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background .18s', boxShadow: '0 4px 18px rgba(0,29,71,.3)' }} onMouseOver={e => e.currentTarget.style.background = '#0d3470'} onMouseOut={e => e.currentTarget.style.background = '#001d47'}>
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                 </div>
                 <span style={{ fontSize: 11, fontWeight: 500, color: '#475569' }}>Nuova attività</span>
               </div>
+
+              {/* NUOVO DOCUMENTO */}
+              <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                <div onClick={() => setShowDocMenu(true)}
+                  style={{ width: 52, height: 52, borderRadius: '50%', background: '#1a6ab5', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'background .18s', boxShadow: '0 4px 18px rgba(26,106,181,.3)' }}
+                  onMouseOver={e => e.currentTarget.style.background = '#0d4d8a'}
+                  onMouseOut={e => e.currentTarget.style.background = '#1a6ab5'}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+                    <line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/>
+                  </svg>
+                </div>
+                <span style={{ fontSize: 11, fontWeight: 500, color: '#475569' }}>Nuovo documento</span>
+              </div>
             </div>
+
+            {/* Modale scelta tipo documento */}
+            {showDocMenu && (
+              <NuovoDocumentoModal
+                onClose={() => setShowDocMenu(false)}
+                onSchedaDemo={() => { setShowDocMenu(false); setShowSchedaDemo(true); }}
+                onRaccoltaRequisiti={() => { setShowDocMenu(false); setShowRaccoltaRequisiti(true); }}
+              />
+            )}
+
+            {/* Modale Scheda Demo */}
+            {showSchedaDemo && <SchedaDemoModal onClose={() => setShowSchedaDemo(false)} staff={staff} />}
+
+            {/* Modale Raccolta Requisiti */}
+            {showRaccoltaRequisiti && <RaccoltaRequisitiModal onClose={() => setShowRaccoltaRequisiti(false)} staff={staff} clients={clients} />}
             {userOverride && (
               <div>
                 <AccordionHome tipo="attivita" myKey={`${userOverride.cognome} ${userOverride.nome}`} clients={clients} onOpenCardModal={card => onOpenCard && onOpenCard(card)} />

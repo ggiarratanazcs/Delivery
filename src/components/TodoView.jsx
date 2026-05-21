@@ -362,6 +362,14 @@ export function TodoView({ staff, clients, openCardId, onCardOpened, isAdmin = f
           </div>
         )}
 
+        {/* Lente ricerca — accanto ai workflow */}
+        <SearchLensTodo value={searchTodo} onChange={setSearchTodo} />
+        {searchTodo && (
+          <span style={{ fontSize: '11px', color: '#94a3b8' }}>
+            {attivitaFiltrate.length} risultat{attivitaFiltrate.length === 1 ? 'o' : 'i'}
+          </span>
+        )}
+
         {/* Pill viste attive */}
         {selectedWorkflow && viste.length > 0 && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
@@ -393,12 +401,6 @@ export function TodoView({ staff, clients, openCardId, onCardOpened, isAdmin = f
               style={{ width: 32, height: 32, borderRadius: 8, border: '0.5px solid #e2e8f0', cursor: 'pointer', background: viewMode === 'lista' ? '#eff6ff' : 'transparent', color: viewMode === 'lista' ? '#0054a6' : '#94a3b8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
             </button>
-            <SearchLensTodo value={searchTodo} onChange={setSearchTodo} />
-            {searchTodo && (
-              <span style={{ fontSize: '11px', color: '#94a3b8' }}>
-                {attivitaFiltrate.length} risultat{attivitaFiltrate.length === 1 ? 'o' : 'i'}
-              </span>
-            )}
             <button
               onClick={() => { const primaCol = currentColonne.find(c => /nuova|richiesta|new/i.test(c.nome)) || currentColonne[0]; setEditCard(null); setTargetColId(primaCol?.id || null); setShowCardModal(true); }}
               style={{ display: 'flex', alignItems: 'center', gap: '7px', padding: isMobile ? '7px 12px' : '7px 18px', borderRadius: '20px', border: '1px solid #bfdbfe', background: '#eff6ff', color: '#0054a6', fontSize: '12px', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}
