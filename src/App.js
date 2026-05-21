@@ -40,6 +40,7 @@ import { DesktopOnly, useIsMobile } from './components/DesktopOnly.jsx';
 import { GestioneDatiModal } from './components/GestioneDati.jsx';
 import { KpiPianificazione } from './components/KpiPianificazione.jsx';
 import { PopupConsuntivi } from './components/ConsuntiviPopup.jsx';
+import { ConfigurazioneView } from './components/ConfigurazioneView.jsx';
 
 const customStyles = `
   /* Numeri tabulari senza zero barrato su elementi con font ereditato */
@@ -1001,6 +1002,15 @@ export default function App() {
                         <span style={{ fontSize: '16px' }}>🎨</span>
                         <span>Aspetto</span>
                       </div>
+                      {isAdmin && (
+                        <div onClick={() => { setView('configurazione'); setShowUserMenu(false); }}
+                          style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', cursor: 'pointer', fontSize: '13px', color: '#475569', transition: 'background 0.15s' }}
+                          onMouseOver={e => e.currentTarget.style.background = '#f8fafc'}
+                          onMouseOut={e => e.currentTarget.style.background = 'transparent'}>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2"/></svg>
+                          <span>Configurazione</span>
+                        </div>
+                      )}
                       <div style={{ height: '0.5px', background: '#f1f5f9' }} />
                       <div onClick={handleLogout} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', cursor: 'pointer', fontSize: '13px', color: '#475569', transition: 'background 0.15s' }}
                         onMouseOver={e => e.currentTarget.style.background = '#f8fafc'}
@@ -1150,6 +1160,14 @@ export default function App() {
             onOpenProgetto={(progettoId, commessaId) => setProgettoAperto({ progettoId, commessaId })} />
         )
 
+      ) : view === 'configurazione' && isAdmin ? (
+        <ConfigurazioneView
+          staff={staff}
+          clients={visibleClients}
+          onBack={() => setView('kpi')}
+          onReload={() => loadAllDataSilent()}
+        />
+
       ) : (
         <DesktopOnly label="Pianificazione">
           <div className="view-content">
@@ -1211,12 +1229,7 @@ export default function App() {
                     return [{ key: 'clients', label: 'Clienti' }, { key: 'commesse', label: 'Commesse' }].map(btn => {
                       const isActive = state[btn.key];
                       return (
-                        <div key={btn.key} onClick={() => {
-                          const next = !state[btn.key];
-                          setter(prev => ({ ...prev, [btn.key]: next }));
-                          // Se si comprime, svuota anche gli expandedItems aperti manualmente
-                          if (!next) setExpandedItems({});
-                        }}
+                        <div key={btn.key} onClick={() => setter(prev => ({ ...prev, [btn.key]: !prev[btn.key] }))}
                           style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: isActive ? 500 : 400, color: isActive ? '#0054a6' : '#94a3b8', cursor: 'pointer', padding: '4px 2px', borderBottom: isActive ? '1.5px solid #0054a6' : '1.5px solid transparent', transition: 'all 0.15s', userSelect: 'none' }}>
                           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: isActive ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.15s' }}><polyline points="6 9 12 15 18 9"/></svg>
                           {btn.label}
@@ -1230,12 +1243,7 @@ export default function App() {
                     return [{ key: 'clients', label: 'Clienti' }, { key: 'commesse', label: 'Commesse' }].map(btn => {
                       const isActive = state[btn.key];
                       return (
-                        <div key={btn.key} onClick={() => {
-                          const next = !state[btn.key];
-                          setter(prev => ({ ...prev, [btn.key]: next }));
-                          // Se si comprime, svuota anche gli expandedItems aperti manualmente
-                          if (!next) setExpandedItems({});
-                        }}
+                        <div key={btn.key} onClick={() => setter(prev => ({ ...prev, [btn.key]: !prev[btn.key] }))}
                           style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: isActive ? 500 : 400, color: isActive ? '#0054a6' : '#94a3b8', cursor: 'pointer', padding: '4px 2px', borderBottom: isActive ? '1.5px solid #0054a6' : '1.5px solid transparent', transition: 'all 0.15s', userSelect: 'none' }}>
                           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: isActive ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.15s' }}><polyline points="6 9 12 15 18 9"/></svg>
                           {btn.label}

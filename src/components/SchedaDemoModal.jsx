@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import * as XLSX from 'xlsx';
 import { DatePicker } from './DatePicker.jsx';
+import { supabase } from '../supabase.js';
 
 
 // ─────────────────────────────────────────────
@@ -446,7 +447,21 @@ function StepIntestazione({ data, onChange, staff, onChangeProdotto }) {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14 }}>
+        {/* N° UTENTI — qui per pre-calcolo giornate da fasce */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+          <label style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>N° Utenti</label>
+          <input
+            type="number" min="1"
+            value={data.numUtenti || ''}
+            onChange={e => upd('numUtenti', e.target.value)}
+            placeholder="es. 10"
+            style={{ padding: '9px 12px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: 13, color: '#0f172a', outline: 'none', background: '#f8fafc', fontFamily: 'IBM Plex Mono, monospace', width: '100%', boxSizing: 'border-box', transition: 'border-color 0.15s' }}
+            onFocus={e => e.target.style.borderColor = '#2563eb'}
+            onBlur={e => e.target.style.borderColor = '#e2e8f0'}
+          />
+        </div>
+
         {/* DEMO N° */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
           <label style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Demo N°</label>
@@ -781,8 +796,7 @@ function StepSistemistica({ data, onChange }) {
           })}
         </div>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-        <FieldText label="N° Utenti Totali" value={data.numUtenti} onChange={v => upd('numUtenti', v)} placeholder="es. 5" mono />
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 14 }}>
         <FieldText label="Gg Passaggio Dati (stima)" value={data.ggPassaggioDati} onChange={v => upd('ggPassaggioDati', v)} placeholder="es. 2" mono />
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
@@ -829,7 +843,9 @@ function StepSintesi({ intestazione, cliente, selezione, giornate, noteArea, sis
         <div style={{ background: '#f0fdf4', borderRadius: 8, padding: '10px 14px', border: '1px solid #bbf7d0' }}>
           <div style={{ fontSize: 10, fontWeight: 700, color: '#16a34a', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Giornate totali</div>
           <div style={{ fontSize: 20, fontWeight: 800, color: '#001d47', fontFamily: 'IBM Plex Mono, monospace' }}>{totGiornate.toFixed(1)}</div>
-          <div style={{ fontSize: 11, color: '#64748b' }}>da listino</div>
+          <div style={{ fontSize: 11, color: '#64748b' }}>
+            {intestazione.numUtenti ? `da listino · ${intestazione.numUtenti} utenti` : 'da listino'}
+          </div>
         </div>
       </div>
       <div style={{ maxHeight: 160, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -852,7 +868,7 @@ function StepSintesi({ intestazione, cliente, selezione, giornate, noteArea, sis
         })}
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, fontSize: 12 }}>
-        {[['INSTALLAZIONE', sistemistica.installazione], ['N° UTENTI', sistemistica.numUtenti], ['GG PASSAGGIO DATI', sistemistica.ggPassaggioDati]].map(([lbl, val]) => (
+        {[['INSTALLAZIONE', sistemistica.installazione], ['N° UTENTI', intestazione.numUtenti || sistemistica.numUtenti], ['GG PASSAGGIO DATI', sistemistica.ggPassaggioDati]].map(([lbl, val]) => (
           <div key={lbl} style={{ background: '#f8fafc', borderRadius: 8, padding: '8px 12px' }}>
             <div style={{ fontSize: 10, color: '#64748b', marginBottom: 2 }}>{lbl}</div>
             <strong>{val || '—'}</strong>
@@ -941,7 +957,7 @@ ${areeUsate.map(area=>{const col=areaColors[area]||areaColors['BASE'];const mm=m
 <div class="tot"><span>Totale giornate calcolate</span><strong style="font-size:14pt">${totGiornate.toFixed(1)} gg</strong></div>
 <div class="g3">
 <div class="box"><div class="lbl">Installazione</div><strong>${sistemistica.installazione||'—'}</strong></div>
-<div class="box"><div class="lbl">N° Utenti</div><strong>${sistemistica.numUtenti||'—'}</strong></div>
+<div class="box"><div class="lbl">N° Utenti</div><strong>${intestazione.numUtenti||sistemistica.numUtenti||'—'}</strong></div>
 <div class="box"><div class="lbl">Gg Passaggio Dati</div><strong>${sistemistica.ggPassaggioDati||'—'}</strong></div>
 </div>
 ${sistemistica.note?`<div class="box" style="margin-top:10px"><div class="lbl">Note</div>${sistemistica.note}</div>`:''}
@@ -965,7 +981,40 @@ export function SchedaDemoModal({ onClose, moduli: moduliEsterni, staff }) {
   const [noteArea, setNoteArea] = useState({});
   const [sistemistica, setSistemistica] = useState({});
 
-  const moduli = moduliEsterni || (intestazione.prodotto === 'Cassiopea' ? MODULI_CASSIOPEA_DEFAULT : MODULI_TESEO7_DEFAULT);
+  const [moduliDB, setModuliDB] = useState(null);
+
+  useEffect(() => {
+    const prodotto = intestazione.prodotto || 'Teseo7';
+    const numUtenti = parseInt(intestazione.numUtenti) || 0;
+
+    supabase.from('listino_moduli').select('*, listino_fasce(*)')
+      .eq('prodotto', prodotto).order('area').order('ordine')
+      .then(({ data }) => {
+        if (data && data.length > 0) {
+          setModuliDB(data.map(m => {
+            // Calcola gg in base a fasce + numero utenti
+            let gg = m.gg_default || 0.5;
+            if (numUtenti > 0 && m.listino_fasce && m.listino_fasce.length > 0) {
+              const fasceSorted = [...m.listino_fasce].sort((a, b) => a.utenti_max - b.utenti_max);
+              // Prende la prima fascia con utenti_max >= numUtenti
+              const fascia = fasceSorted.find(f => f.utenti_max >= numUtenti)
+                          || fasceSorted[fasceSorted.length - 1]; // altrimenti l'ultima (più grande)
+              if (fascia) gg = fascia.gg;
+            }
+            return {
+              area: m.area, codice: m.codice, nome: m.nome,
+              prereq: m.prereq || [], gg,
+              _dbId: m.id, _fasce: m.listino_fasce || [],
+            };
+          }));
+        } else {
+          setModuliDB(null);
+        }
+      });
+  }, [intestazione.prodotto, intestazione.numUtenti]);
+
+  const moduliFallback = intestazione.prodotto === 'Cassiopea' ? MODULI_CASSIOPEA_DEFAULT : MODULI_TESEO7_DEFAULT;
+  const moduli = moduliEsterni || moduliDB || moduliFallback;
   const areeOrdinate = intestazione.prodotto === 'Cassiopea' ? AREE_CASSIOPEA : AREE_ORDINATE;
   const areaColors = intestazione.prodotto === 'Cassiopea' ? AREA_COLORS_CASSIOPEA : AREA_COLORS;
 
@@ -976,6 +1025,7 @@ export function SchedaDemoModal({ onClose, moduli: moduliEsterni, staff }) {
     setSelezione(new Set());
     setGiornate({});
     setNoteArea({});
+    setModuliDB(null); // forza reload
   };
 
     const canNext = () => {
