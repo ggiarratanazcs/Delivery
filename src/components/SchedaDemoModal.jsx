@@ -967,7 +967,7 @@ export function SchedaDemoModal({ onClose, moduli: moduliEsterni, staff }) {
 
   const moduli = moduliEsterni || (intestazione.prodotto === 'Cassiopea' ? MODULI_CASSIOPEA_DEFAULT : MODULI_TESEO7_DEFAULT);
   const areeOrdinate = intestazione.prodotto === 'Cassiopea' ? AREE_CASSIOPEA : AREE_ORDINATE;
-  const areaColors = intestazione.prodotto === 'Cassiopea' ? AREA_COLORS_CASSIOPEA : areaColors;
+  const areaColors = intestazione.prodotto === 'Cassiopea' ? AREA_COLORS_CASSIOPEA : AREA_COLORS;
 
   const handleOverlayClick = () => setShowExitConfirm(true);
 
