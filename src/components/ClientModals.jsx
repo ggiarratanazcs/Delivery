@@ -7,6 +7,39 @@ import { ProdottiSelector, ProdottiBadges } from './ProdottiSelector.jsx';
 import { creaTaskStandard } from './ProgettiView.jsx';
 import * as XLSX from 'xlsx';
 
+// ── EmailJS config ───────────────────────────────────────────
+const EMAILJS_SERVICE  = 'service_67j6e7k';
+const EMAILJS_TEMPLATE = 'template_f3hq3fr';
+const EMAILJS_KEY      = '4NYSQD6icz1YRnkZw';
+
+async function sendMailCommessa({ destinatario, testo, nomeCommessa, staff }) {
+  const s = (staff || []).find(x => `${x.cognome} ${x.nome}` === destinatario);
+  if (!s?.email) { console.warn('Email non trovata per:', destinatario); return; }
+  try {
+    const res = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        service_id:  EMAILJS_SERVICE,
+        template_id: EMAILJS_TEMPLATE,
+        user_id:     EMAILJS_KEY,
+        template_params: {
+          to_email: s.email,
+          name:     s.nome,
+          commessa: nomeCommessa,
+          message:  `${testo}
+
+Commessa: ${nomeCommessa}
+
+Apri il portale: https://react-efzysfuq.stackblitz.io`,
+        },
+      }),
+    });
+    console.log('EmailJS:', res.status, res.status === 200 ? 'OK' : await res.text());
+  } catch (e) { console.warn('Errore invio mail:', e); }
+}
+
+
 // ─────────────────────────────────────────────
 // MultiSelectDropdown riutilizzabile
 // ─────────────────────────────────────────────
@@ -43,7 +76,7 @@ function MultiSelectDropdown({ options, selected, onChange, placeholder, accentC
         }
       </div>
       {/* Trigger */}
-      <div onClick={() => setOpen(v => !v)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '5px 9px', border: `1px solid ${open ? '#0d4d8a' : '#e2e8f0'}`, borderRadius: '8px', background: '#fff', cursor: 'pointer', userSelect: 'none' }}>
+      <div onClick={() => setOpen(v => !v)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '5px 9px', border: `1px solid ${open ? 'var(--brand-700)' : '#e2e8f0'}`, borderRadius: '8px', background: '#fff', cursor: 'pointer', userSelect: 'none' }}>
         <svg width="12" height="12" viewBox="0 0 15 15" fill="none"><circle cx="6.5" cy="6.5" r="5" stroke="#94a3b8" strokeWidth="1.5"/><path d="M10 10l3 3" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round"/></svg>
         <input value={search} onChange={e => { e.stopPropagation(); setSearch(e.target.value); if (!open) setOpen(true); }} onClick={e => e.stopPropagation()} placeholder="Cerca..." style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '12px', flex: 1, color: '#0f172a', fontFamily: 'inherit' }} />
         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}><polyline points="6 9 12 15 18 9"/></svg>
@@ -118,7 +151,7 @@ function BolleDropdown({ bolleDisponibili, bolleAssociate, onToggle, consuntiviP
         }
       </div>
       {/* Trigger search */}
-      <div onClick={() => setOpen(v => !v)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '5px 9px', border: `1px solid ${open ? '#0d4d8a' : '#e2e8f0'}`, borderRadius: '8px', background: '#fff', cursor: 'pointer', userSelect: 'none' }}>
+      <div onClick={() => setOpen(v => !v)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '5px 9px', border: `1px solid ${open ? 'var(--brand-700)' : '#e2e8f0'}`, borderRadius: '8px', background: '#fff', cursor: 'pointer', userSelect: 'none' }}>
         <svg width="12" height="12" viewBox="0 0 15 15" fill="none"><circle cx="6.5" cy="6.5" r="5" stroke="#94a3b8" strokeWidth="1.5"/><path d="M10 10l3 3" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round"/></svg>
         <input value={search} onChange={e => { e.stopPropagation(); setSearch(e.target.value); if (!open) setOpen(true); }} onClick={e => e.stopPropagation()} placeholder="Cerca per codice o descrizione..." style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '12px', flex: 1, color: '#0f172a', fontFamily: 'inherit' }} />
         {bolleDisponibili.length > 0 && <span style={{ fontSize: '10px', color: '#94a3b8', flexShrink: 0 }}>{bolleAssociate.length}/{bolleDisponibili.length}</span>}
@@ -158,22 +191,34 @@ function SelectDropdown({ options = [], value, onChange, placeholder = 'Scegli..
   const [sdOpen, setSdOpen] = React.useState(false);
   const [sdSearch, setSdSearch] = React.useState('');
   const sdRef = React.useRef(null);
+  const [dropStyle, setDropStyle] = React.useState({});
   React.useEffect(() => {
     const h = (e) => { if (sdRef.current && !sdRef.current.contains(e.target)) { setSdOpen(false); setSdSearch(''); } };
     document.addEventListener('mousedown', h);
     return () => document.removeEventListener('mousedown', h);
   }, []);
+  React.useEffect(() => {
+    if (sdOpen && sdRef.current) {
+      const rect = sdRef.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const spaceAbove = rect.top;
+      const showAbove = spaceBelow < 240 && spaceAbove > spaceBelow;
+      setDropStyle(showAbove
+        ? { position: 'fixed', left: rect.left, width: rect.width, bottom: window.innerHeight - rect.top + 4, zIndex: 9999 }
+        : { position: 'fixed', left: rect.left, width: rect.width, top: rect.bottom + 4, zIndex: 9999 });
+    }
+  }, [sdOpen]);
   const filtered = options.filter(o => !sdSearch || (o.label ?? o).toString().toLowerCase().includes(sdSearch.toLowerCase()));
   const selLabel = options.find(o => (o.value ?? o) === value)?.label ?? value ?? '';
   return (
     <div ref={sdRef} style={{ position: 'relative' }}>
       <div onClick={() => !disabled && setSdOpen(v => !v)}
-        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: `1.5px solid ${sdOpen ? '#0d4d8a' : '#e2e8f0'}`, padding: '6px 2px 8px', cursor: disabled ? 'default' : 'pointer', minHeight: 34, background: 'transparent' }}>
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: `1.5px solid ${sdOpen ? 'var(--brand-700)' : '#e2e8f0'}`, padding: '6px 2px 8px', cursor: disabled ? 'default' : 'pointer', minHeight: 34, background: 'transparent' }}>
         <span style={{ fontSize: '13px', color: selLabel ? '#1e293b' : '#94a3b8', fontStyle: selLabel ? 'normal' : 'italic', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selLabel || placeholder}</span>
         {!disabled && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, transform: sdOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.18s' }}><polyline points="6 9 12 15 18 9"/></svg>}
       </div>
       {sdOpen && (
-        <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, background: '#fff', border: '0.5px solid #e2e8f0', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,18,41,0.12)', zIndex: 300, overflow: 'hidden' }}>
+        <div style={{ ...dropStyle, background: '#fff', border: '0.5px solid #e2e8f0', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,18,41,0.12)', overflow: 'hidden', maxWidth: 500 }}>
           <div style={{ padding: '6px 8px', borderBottom: '0.5px solid #f1f5f9' }}>
             <input value={sdSearch} onChange={e => { e.stopPropagation(); setSdSearch(e.target.value); }} onClick={e => e.stopPropagation()} placeholder="Cerca..." autoFocus
               style={{ width: '100%', padding: '5px 8px', fontSize: '12px', border: '0.5px solid #e2e8f0', borderRadius: 6, outline: 'none', background: '#f8fafc', boxSizing: 'border-box', fontFamily: 'inherit' }} />
@@ -181,7 +226,7 @@ function SelectDropdown({ options = [], value, onChange, placeholder = 'Scegli..
           <div style={{ maxHeight: 220, overflowY: 'auto' }}>
             {filtered.map((o, i) => { const val = o.value ?? o; const label = o.label ?? o; const isSel = val === value; return (
               <div key={i} onClick={() => { onChange(val); setSdOpen(false); setSdSearch(''); }}
-                style={{ padding: '9px 14px', fontSize: '13px', cursor: 'pointer', background: isSel ? '#eff6ff' : '#fff', color: isSel ? '#001d47' : '#1e293b', fontWeight: isSel ? 500 : 400 }}
+                style={{ padding: '9px 14px', fontSize: '13px', cursor: 'pointer', background: isSel ? '#eff6ff' : '#fff', color: isSel ? 'var(--brand-800)' : '#1e293b', fontWeight: isSel ? 500 : 400 }}
                 onMouseOver={e => { if (!isSel) e.currentTarget.style.background = '#f8fafc'; }}
                 onMouseOut={e => { if (!isSel) e.currentTarget.style.background = '#fff'; }}>{label}</div>
             ); })}
@@ -191,6 +236,7 @@ function SelectDropdown({ options = [], value, onChange, placeholder = 'Scegli..
     </div>
   );
 }
+
 
 // ─────────────────────────────────────────────
 // KPI Economico Sidebar — versione compatta per la sidebar commessa
@@ -329,16 +375,42 @@ function KpiEconomicoCommessa({ commessaId, ordiniCommessa }) {
 // ─────────────────────────────────────────────
 // OrdineForm inline
 // ─────────────────────────────────────────────
-function OrdineForm({ onSave, onCancel }) {
+function OrdineForm({ onSave, onCancel, bolleDisponibili = [], bolleGiaAssegnate = [] }) {
   const [codice, setCodice] = useState('');
   const [numero, setNumero] = useState('');
   const [data, setData] = useState('');
   const [importo, setImporto] = useState('');
+  const [bolleSelezionate, setBolleSelezionate] = useState([]);
+  const [bolleOpen, setBolleOpen] = useState(false);
+  const [bolleSearch, setBolleSearch] = useState('');
+  const bolleRef = React.useRef(null);
+
+  React.useEffect(() => {
+    const h = (e) => { if (bolleRef.current && !bolleRef.current.contains(e.target)) setBolleOpen(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, []);
+
+  // Bolle senza ordine assegnato (libere) tra quelle associate alla commessa
+  const bolleLibere = bolleDisponibili.filter(b => !bolleGiaAssegnate.includes(b.id));
+  const bolleFiltrate = bolleLibere.filter(b =>
+    !bolleSearch || b.codice.toLowerCase().includes(bolleSearch.toLowerCase()) || (b.descrizione || '').toLowerCase().includes(bolleSearch.toLowerCase())
+  );
+
+  const toggleBolla = (id) => setBolleSelezionate(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
 
   const handleSave = () => {
     if (!codice.trim() || !numero.trim()) return;
-    onSave({ codice: codice.trim().toUpperCase(), numero: numero.trim(), data: data || null, importo: parseFloat(String(importo).replace(',', '.')) || 0 });
+    onSave({
+      codice: codice.trim().toUpperCase(),
+      numero: numero.trim(),
+      data: data || null,
+      importo: parseFloat(String(importo).replace(',', '.')) || 0,
+      bolleIds: bolleSelezionate,
+    });
   };
+
+  const canSave = codice.trim() && numero.trim();
 
   return (
     <div style={{ background: '#f0f7ff', border: '1px solid #bfdbfe', borderRadius: '10px', padding: '12px 14px', marginBottom: '8px' }}>
@@ -364,9 +436,65 @@ function OrdineForm({ onSave, onCancel }) {
             style={{ width: '100%', fontSize: '13px', border: 'none', borderBottom: '1.5px solid #bfdbfe', background: 'transparent', padding: '3px 0 6px', outline: 'none', boxSizing: 'border-box' }} />
         </div>
       </div>
+
+      {/* Selezione bolle */}
+      <div style={{ marginBottom: '10px' }}>
+        <div style={{ fontSize: '10px', color: '#64748b', fontWeight: 500, marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Bolle associate a questo ordine</div>
+        {/* Pill selezionate */}
+        {bolleSelezionate.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 6 }}>
+            {bolleSelezionate.map(id => {
+              const b = bolleDisponibili.find(x => x.id === id);
+              return b ? (
+                <span key={id} onClick={() => toggleBolla(id)}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 600, color: '#0C447C', background: '#fff', border: '0.5px solid #bfdbfe', borderRadius: 20, padding: '2px 8px', cursor: 'pointer', fontFamily: 'monospace' }}>
+                  {b.codice} <span style={{ fontSize: 10, opacity: 0.5 }}>×</span>
+                </span>
+              ) : null;
+            })}
+          </div>
+        )}
+        {/* Dropdown bolle */}
+        <div ref={bolleRef} style={{ position: 'relative' }}>
+          <div onClick={() => setBolleOpen(v => !v)}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 9px', border: `1px solid ${bolleOpen ? '#185FA5' : '#bfdbfe'}`, borderRadius: 8, background: '#fff', cursor: 'pointer' }}>
+            <svg width="11" height="11" viewBox="0 0 15 15" fill="none"><circle cx="6.5" cy="6.5" r="5" stroke="#94a3b8" strokeWidth="1.5"/><path d="M10 10l3 3" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round"/></svg>
+            <input value={bolleSearch} onChange={e => { e.stopPropagation(); setBolleSearch(e.target.value); if (!bolleOpen) setBolleOpen(true); }} onClick={e => e.stopPropagation()}
+              placeholder={bolleLibere.length === 0 ? 'Nessuna bolla libera' : 'Cerca bolla...'}
+              disabled={bolleLibere.length === 0}
+              style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: 12, flex: 1, fontFamily: 'inherit' }} />
+            <span style={{ fontSize: 10, color: '#94a3b8' }}>{bolleSelezionate.length}/{bolleLibere.length}</span>
+          </div>
+          {bolleOpen && bolleFiltrate.length > 0 && (
+            <div style={{ position: 'absolute', top: 'calc(100% + 3px)', left: 0, right: 0, background: '#fff', border: '0.5px solid #e2e8f0', borderRadius: 8, boxShadow: '0 4px 16px rgba(0,0,0,0.1)', zIndex: 300, maxHeight: 180, overflowY: 'auto' }}>
+              {bolleFiltrate.map(b => {
+                const sel = bolleSelezionate.includes(b.id);
+                const g = (b.giorni_disponibili || 0).toFixed(1);
+                return (
+                  <div key={b.id} onClick={() => toggleBolla(b.id)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', cursor: 'pointer', background: sel ? '#eff6ff' : '#fff' }}
+                    onMouseOver={e => { if (!sel) e.currentTarget.style.background = '#f8fafc'; }}
+                    onMouseOut={e => { if (!sel) e.currentTarget.style.background = '#fff'; }}>
+                    <div style={{ width: 13, height: 13, borderRadius: 3, border: `2px solid ${sel ? '#0054a6' : '#cbd5e1'}`, background: sel ? '#0054a6' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      {sel && <span style={{ color: '#fff', fontSize: 9 }}>✓</span>}
+                    </div>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: '#0054a6', fontFamily: 'monospace', flexShrink: 0 }}>{b.codice}</span>
+                    <span style={{ fontSize: 11, color: '#64748b', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.descrizione || '—'}</span>
+                    <span style={{ fontSize: 10, color: '#94a3b8', flexShrink: 0 }}>{g}g</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+        {bolleLibere.length === 0 && bolleDisponibili.length > 0 && (
+          <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4, fontStyle: 'italic' }}>Tutte le bolle sono già assegnate a un ordine</div>
+        )}
+      </div>
+
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
         <button onClick={onCancel} style={{ padding: '5px 14px', borderRadius: '8px', border: '0.5px solid #e2e8f0', background: 'transparent', color: '#64748b', fontSize: '12px', cursor: 'pointer' }}>Annulla</button>
-        <button onClick={handleSave} disabled={!codice.trim() || !numero.trim()} style={{ padding: '5px 14px', borderRadius: '8px', border: 'none', background: codice.trim() && numero.trim() ? '#001d47' : '#cbd5e1', color: '#fff', fontSize: '12px', fontWeight: 500, cursor: codice.trim() && numero.trim() ? 'pointer' : 'default' }}>Aggiungi</button>
+        <button onClick={handleSave} disabled={!canSave} style={{ padding: '5px 14px', borderRadius: '8px', border: 'none', background: canSave ? 'var(--brand-800)' : '#cbd5e1', color: '#fff', fontSize: '12px', fontWeight: 500, cursor: canSave ? 'pointer' : 'default' }}>Aggiungi</button>
       </div>
     </div>
   );
@@ -375,12 +503,14 @@ function OrdineForm({ onSave, onCancel }) {
 export function ProjectModal({ staff, clients, matrix, targetedEdit, onClose, onOpenProgetto }) {
   const [selectedClientId, setSelectedClientId] = useState('');
   const [selectedCommessaId, setSelectedCommessaId] = useState('');
-  const [f, setF] = useState({ nome_commessa: '', pm_commessa: '', team: [], data_inizio: '', data_fine: '', attiva: true });
+  const [f, setF] = useState({ nome_commessa: '', pm_commessa: '', team: [], data_inizio: '', data_fine: '', attiva: true, buffer_pianificazione: 0 });
   const [isEdit, setIsEdit] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [progettoId, setProgettoId] = useState(null);
   const [checkingProgetto, setCheckingProgetto] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
+  const [showOrdineToast, setShowOrdineToast] = useState(false);
 
   // Navigazione sidebar
   const [activeSection, setActiveSection] = useState('generale');
@@ -404,11 +534,15 @@ export function ProjectModal({ staff, clients, matrix, targetedEdit, onClose, on
 
   const [ordiniCommessa, setOrdiniCommessa] = useState([]);
   const [showOrdineForm, setShowOrdineForm] = useState(false);
+  const [andamentoData, setAndamentoData] = useState({ giorniBolle: 0, oreTecniche: 0, orePagamento: 0, loadingAnd: false });
+  const [ordinePopup, setOrdinePopup] = useState(null); // { ordine, bolle[] }
 
   useEffect(() => {
     if (targetedEdit) {
       setSelectedClientId(targetedEdit.clientId);
       setSelectedCommessaId(targetedEdit.commessaId || '');
+      // Quando arriva da OrdiniRichiesteView con prefillOrdine, parte sempre da generale
+      // L'ordine viene inserito automaticamente dopo il salvataggio
     }
   }, [targetedEdit]);
 
@@ -420,8 +554,10 @@ export function ProjectModal({ staff, clients, matrix, targetedEdit, onClose, on
       .then(({ data }) => setStaffSviluppo(data || []));
   }, []);
 
+  const [bolleOccupate, setBolleOccupate] = useState(new Set()); // bolla_id usate in altre commesse
+
   useEffect(() => {
-    if (!selectedClientId) { setBolleDisponibili([]); return; }
+    if (!selectedClientId) { setBolleDisponibili([]); setBolleOccupate(new Set()); return; }
     const client = clients.find(c => c.id === selectedClientId);
     const progettiIds = (client?.commesse || []).map(co => co.id).filter(Boolean);
     const queries = [];
@@ -445,17 +581,28 @@ export function ProjectModal({ staff, clients, matrix, targetedEdit, onClose, on
         });
         setConsuntiviPerBolla(perBolla);
       }
+      // Carica bolle già associate ad ALTRE commesse dello stesso cliente
+      if (progettiIds.length > 0) {
+        const { data: cb } = await supabase.from('commessa_bolle').select('bolla_id, commessa_id').in('commessa_id', progettiIds);
+        const occupate = new Set(
+          (cb || [])
+            .filter(r => r.commessa_id !== selectedCommessaId) // escludi la commessa corrente
+            .map(r => r.bolla_id)
+        );
+        setBolleOccupate(occupate);
+      }
     });
-  }, [selectedClientId, clients]);
+  }, [selectedClientId, clients, selectedCommessaId]);
 
   useEffect(() => {
     if (selectedCommessaId) {
       const comm = availableCommesse.find(c => c.id === selectedCommessaId);
       if (comm) {
-        setF({ nome_commessa: comm.nome_commessa, pm_commessa: comm.pm_commessa || '', team: comm.team || [], data_inizio: comm.data_inizio || '', data_fine: comm.data_fine || '', attiva: comm.attiva !== false });
+        setF({ nome_commessa: comm.nome_commessa, pm_commessa: comm.pm_commessa || '', team: comm.team || [], data_inizio: comm.data_inizio || '', data_fine: comm.data_fine || '', attiva: comm.attiva !== false, buffer_pianificazione: comm.buffer_pianificazione || 0 });
         setIsEdit(true);
-        supabase.from('commesse').select('has_consulenza, has_sviluppo').eq('id', selectedCommessaId).single()
-          .then(({ data: td }) => { if (td) { setHasConsulenza(td.has_consulenza !== false); setHasSviluppo(!!td.has_sviluppo); } });
+        setIsEditMode(false);
+        supabase.from('commesse').select('has_consulenza, has_sviluppo, buffer_pianificazione').eq('id', selectedCommessaId).single()
+          .then(({ data: td }) => { if (td) { setHasConsulenza(td.has_consulenza !== false); setHasSviluppo(!!td.has_sviluppo); if (td.buffer_pianificazione != null) setF(p => ({ ...p, buffer_pianificazione: td.buffer_pianificazione })); } });
         setCheckingProgetto(true);
         supabase.from('progetti').select('id').eq('commessa_id', selectedCommessaId).single()
           .then(({ data }) => { setProgettoId(data?.id || null); setCheckingProgetto(false); });
@@ -475,15 +622,29 @@ export function ProjectModal({ staff, clients, matrix, targetedEdit, onClose, on
           });
         supabase.from('ordini_cliente').select('*').eq('commessa_id', selectedCommessaId).order('codice')
           .then(({ data }) => setOrdiniCommessa(data || []));
+
+        // Carica dati andamento
+        setAndamentoData(p => ({ ...p, loadingAnd: true }));
+        supabase.from('commessa_bolle').select('bolla_id, bolle_lavoro(codice, giorni_disponibili)').eq('commessa_id', selectedCommessaId)
+          .then(async ({ data: cb }) => {
+            const giorniBolle = (cb || []).reduce((s, r) => s + (parseFloat(r.bolle_lavoro?.giorni_disponibili) || 0), 0);
+            const codici = (cb || []).map(r => r.bolle_lavoro?.codice).filter(Boolean);
+            if (codici.length === 0) { setAndamentoData({ giorniBolle, oreTecniche: 0, orePagamento: 0, loadingAnd: false }); return; }
+            const { data: cons } = await supabase.from('consuntivi_globali').select('ore_tecniche, ore_pagamento').in('codice_bolla', codici);
+            const oreTecniche = (cons || []).reduce((s, c) => s + (parseFloat(c.ore_tecniche) || 0), 0);
+            const orePagamento = (cons || []).reduce((s, c) => s + (parseFloat(c.ore_pagamento) || 0), 0);
+            setAndamentoData({ giorniBolle, oreTecniche, orePagamento, loadingAnd: false });
+          });
       }
     } else {
-      setF({ nome_commessa: '', pm_commessa: '', team: [], data_inizio: '', data_fine: '', attiva: true });
+      setF({ nome_commessa: '', pm_commessa: '', team: [], data_inizio: '', data_fine: '', attiva: true, buffer_pianificazione: 0 });
       setHasConsulenza(true); setHasSviluppo(false);
-      setIsEdit(false); setProgettoId(null);
+      setIsEdit(false); setIsEditMode(true); setProgettoId(null);
       setBolleAssociate([]); setTeamLavoro([]);
       setAttivitaSviluppo([]); setWfStati({});
       setShowNuovaAttivita(false); setEditingAttivita(null);
       setOrdiniCommessa([]); setShowOrdineForm(false);
+      setAndamentoData({ giorniBolle: 0, oreTecniche: 0, orePagamento: 0, loadingAnd: false });
     }
   }, [selectedCommessaId, selectedClientId]);
 
@@ -496,8 +657,24 @@ export function ProjectModal({ staff, clients, matrix, targetedEdit, onClose, on
   const handleAddOrdine = async (ordineData) => {
     if (!selectedCommessaId) return;
     try {
-      const { data: newOrd } = await supabase.from('ordini_cliente').insert({ ...ordineData, commessa_id: selectedCommessaId }).select().single();
-      if (newOrd) setOrdiniCommessa(prev => [...prev, newOrd]);
+      const { bolleIds = [], ...rest } = ordineData;
+      const { data: newOrd } = await supabase.from('ordini_cliente').insert({ ...rest, commessa_id: selectedCommessaId }).select().single();
+      if (newOrd) {
+        setOrdiniCommessa(prev => [...prev, newOrd]);
+        if (bolleIds.length > 0) {
+          // Aggiorna ordine_id sulle bolle selezionate
+          await supabase.from('bolle_lavoro').update({ ordine_id: newOrd.id }).in('id', bolleIds);
+          // Aggiunge le bolle a commessa_bolle se non già presenti
+          const nuoveAssoc = bolleIds.filter(id => !bolleAssociate.includes(id));
+          if (nuoveAssoc.length > 0) {
+            await supabase.from('commessa_bolle').insert(
+              nuoveAssoc.map(bid => ({ commessa_id: selectedCommessaId, bolla_id: bid, tipo: 'consulenza' }))
+            );
+            setBolleAssociate(prev => [...prev, ...nuoveAssoc]);
+          }
+          setBolleDisponibili(prev => prev.map(b => bolleIds.includes(b.id) ? { ...b, ordine_id: newOrd.id } : b));
+        }
+      }
       setShowOrdineForm(false);
     } catch (err) { alert('Errore: ' + err.message); }
   };
@@ -532,7 +709,7 @@ export function ProjectModal({ staff, clients, matrix, targetedEdit, onClose, on
         prevTeamCons = (prevTeam || []).filter(t => !t.tipo || t.tipo === 'consulenza').map(t => t.staff_name);
         prevTeamSvil = (prevTeam || []).filter(t => t.tipo === 'sviluppo').map(t => t.staff_name);
       }
-      const payload = { client_id: selectedClientId, nome_commessa: f.nome_commessa.trim(), pm_commessa: f.pm_commessa || null, data_inizio: f.data_inizio || null, data_fine: f.data_fine || null, attiva: f.attiva, has_consulenza: hasConsulenza, has_sviluppo: hasSviluppo };
+      const payload = { client_id: selectedClientId, nome_commessa: f.nome_commessa.trim(), pm_commessa: f.pm_commessa || null, data_inizio: f.data_inizio || null, data_fine: f.data_fine || null, attiva: f.attiva, has_consulenza: hasConsulenza, has_sviluppo: hasSviluppo, buffer_pianificazione: parseFloat(f.buffer_pianificazione) || 0 };
       if (isEdit) await supabase.from('commesse').update(payload).eq('id', commId);
       else { const { data } = await supabase.from('commesse').insert(payload).select().single(); commId = data.id; }
 
@@ -554,7 +731,52 @@ export function ProjectModal({ staff, clients, matrix, targetedEdit, onClose, on
         const fmtDate = d => d ? d.split('-').reverse().join('/') : '—';
         new Set([...teamLavoro]).forEach(dest => notificheInsert.push({ destinatario: dest, testo: `Date aggiornate per la commessa "${nomeCommessa}": ${fmtDate(f.data_inizio)} → ${fmtDate(f.data_fine)}`, tipo: 'commessa', riferimento_id: commId }));
       }
-      if (notificheInsert.length > 0) await supabase.from('notifiche').insert(notificheInsert);
+      if (notificheInsert.length > 0) {
+        await supabase.from('notifiche').insert(notificheInsert);
+        const clienteNome = clients?.find(c => c.id === selectedClientId)?.nome_progetto || '—';
+        // Carica bolle associate fresche dal DB
+        const { data: bolleDB } = await supabase.from('commessa_bolle')
+          .select('bolla_id, bolle_lavoro(codice, descrizione)')
+          .eq('commessa_id', commId);
+        const bolleNomi = (bolleDB || []).map(b => b.bolle_lavoro?.codice + (b.bolle_lavoro?.descrizione ? ' – ' + b.bolle_lavoro.descrizione : '')).filter(Boolean);
+        // Carica attività fresche dal DB
+        const { data: attDB } = await supabase.from('attivita').select('titolo').eq('commessa_id', commId).limit(10);
+        const attivitaList = (attDB || []).map(a => a.titolo).filter(Boolean);
+        const extraInfo = {
+          cliente:     clienteNome,
+          team:        teamLavoro.length > 0 ? teamLavoro.join(', ') : '—',
+          bolle:       bolleNomi.length > 0 ? bolleNomi.join(', ') : '—',
+          data_inizio: f.data_inizio,
+          data_fine:   f.data_fine,
+          attivita:    attivitaList.length > 0 ? attivitaList.slice(0,5).join(', ') + (attivitaList.length > 5 ? ` e altre ${attivitaList.length - 5}...` : '') : '—',
+        };
+        console.log('extraInfo:', extraInfo);
+        await Promise.all(notificheInsert.map(n => sendMailCommessa({ destinatario: n.destinatario, testo: n.testo, nomeCommessa, staff, extraInfo })));
+      }
+      // FIX 2: se arrivato da OrdiniRichiesteView, inserisce l'ordine nella nuova commessa
+      if (targetedEdit?.prefillOrdine && commId) {
+        const po = targetedEdit.prefillOrdine;
+        const { data: newOrd } = await supabase.from('ordini_cliente').insert({
+          commessa_id: commId,
+          codice: po.codice_documento || 'ORD',
+          numero: po.numero_ordine,
+          data: po.data_ordine || null,
+          importo: po.importo || 0,
+        }).select().single();
+        if (newOrd && po.bolle_ids?.length > 0) {
+          await supabase.from('bolle_lavoro').update({ ordine_id: newOrd.id }).in('id', po.bolle_ids);
+          // Aggiunge le bolle alla nuova commessa in commessa_bolle
+          await supabase.from('commessa_bolle').insert(
+            po.bolle_ids.map(bid => ({ commessa_id: commId, bolla_id: bid, tipo: 'consulenza' }))
+          );
+        }
+        if (po.id) {
+          await supabase.from('ordini_workflow').update({ stato: 'assegnato', commessa_id: commId }).eq('id', po.id);
+        }
+        // Mostra toast "Ordine pianificato" prima di chiudere
+        setShowOrdineToast(true);
+        await new Promise(r => setTimeout(r, 2200));
+      }
       onClose();
     } catch (err) { alert(err.message); } finally { setIsSaving(false); }
   };
@@ -610,13 +832,15 @@ export function ProjectModal({ staff, clients, matrix, targetedEdit, onClose, on
   const isChiusa = att => { const col = wfStati[att.id] || ''; return /complet|annullat/i.test(col); };
 
   // ── Stili sidebar ──────────────────────────────────────────────
-  const NAVY = '#001d47';
+  const NAVY = 'var(--brand-800)';
   const sidebarSections = [
     { key: 'generale', label: 'Dati generali', sub: f.nome_commessa || 'Da compilare' },
     { key: 'team', label: 'Team di lavoro', sub: teamLavoro.length > 0 ? `${teamLavoro.length} risorse` : 'Nessuna risorsa' },
     { key: 'bolle', label: 'Bolle', sub: bolleAssociate.length > 0 ? `${bolleAssociate.length} associate` : 'Nessuna bolla' },
     { key: 'ordini', label: 'Ordini cliente', sub: totaleOrdini > 0 ? fmtEur(totaleOrdini) : 'Nessun ordine' },
     ...(hasSviluppo ? [{ key: 'sviluppo', label: 'Attività sviluppo', sub: attivitaSviluppo.filter(a => !isChiusa(a)).length > 0 ? `${attivitaSviluppo.filter(a => !isChiusa(a)).length} aperte` : 'Nessuna attività' }] : []),
+    ...(selectedCommessaId ? [{ key: 'pianoFatturazione', label: 'Piano Fatturazione', sub: ordiniCommessa.length > 0 ? `${ordiniCommessa.length} ordini` : 'Nessun ordine' }] : []),
+    ...(selectedCommessaId ? [{ key: 'andamento', label: 'Andamento', sub: 'KPI di commessa' }] : []),
   ];
 
   const NavItem = ({ s, idx }) => {
@@ -648,7 +872,13 @@ export function ProjectModal({ staff, clients, matrix, targetedEdit, onClose, on
           <SelectDropdown options={[{ value: '', label: '— Nuova —' }, ...availableCommesse.map(co => ({ value: co.id, label: co.nome_commessa }))]} value={selectedCommessaId} onChange={setSelectedCommessaId} placeholder="— Nuova —" disabled={!selectedClientId} />
         </FormField>
         <FormField label="Nome commessa" fullWidth>
-          <input value={f.nome_commessa} onChange={e => setF({ ...f, nome_commessa: e.target.value })} placeholder="Nome della commessa..." style={{ width: '100%', border: 'none', borderBottom: '1.5px solid #e2e8f0', borderRadius: 0, background: 'transparent', padding: '6px 0 8px', fontSize: '13px', outline: 'none', fontFamily: 'inherit' }} />
+          <input
+            key={selectedCommessaId || 'new'}
+            defaultValue={f.nome_commessa}
+            onBlur={e => setF(p => ({ ...p, nome_commessa: e.target.value }))}
+            onChange={e => { f.nome_commessa = e.target.value; }}
+            placeholder="Nome della commessa..."
+            style={{ width: '100%', border: 'none', borderBottom: '1.5px solid #e2e8f0', borderRadius: 0, background: 'transparent', padding: '6px 0 8px', fontSize: '13px', outline: 'none', fontFamily: 'inherit' }} />
         </FormField>
         <FormField label="Project manager">
           <SelectDropdown options={[{ value: '', label: '— nessuno —' }, ...pms.map(s => ({ value: staffKey(s), label: staffLabel(s) }))]} value={f.pm_commessa} onChange={v => setF({ ...f, pm_commessa: v })} placeholder="— nessuno —" />
@@ -659,6 +889,26 @@ export function ProjectModal({ staff, clients, matrix, targetedEdit, onClose, on
         </FormField>
         <FormField label="Data fine">
           <DatePicker value={f.data_fine} onChange={v => setF({ ...f, data_fine: v })} />
+        </FormField>
+        <FormField label="Buffer pianificazione %">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <input
+              key={selectedCommessaId || 'new-buf'}
+              type="number" min="0" max="200" step="5"
+              defaultValue={f.buffer_pianificazione || ''}
+              onBlur={e => setF(p => ({ ...p, buffer_pianificazione: parseFloat(e.target.value) || 0 }))}
+              placeholder="0"
+              style={{ width: '80px', border: 'none', borderBottom: '1.5px solid #e2e8f0', borderRadius: 0, background: 'transparent', padding: '6px 0 8px', fontSize: '13px', outline: 'none', fontFamily: 'inherit', textAlign: 'right' }} />
+            <span style={{ fontSize: '13px', color: '#64748b' }}>%</span>
+            {f.buffer_pianificazione > 0 && (
+              <span style={{ fontSize: '11px', color: '#854F0B', background: '#FAEEDA', border: '0.5px solid #FAC775', borderRadius: 20, padding: '2px 8px', marginLeft: 4 }}>
+                +{f.buffer_pianificazione}% oltre il residuo bolla
+              </span>
+            )}
+          </div>
+          <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: 4 }}>
+            Giorni pianificabili oltre il residuo
+          </div>
         </FormField>
       </div>
       <div style={{ marginTop: '20px' }}>
@@ -680,20 +930,127 @@ export function ProjectModal({ staff, clients, matrix, targetedEdit, onClose, on
     </div>
   );
 
+  // Team state
+  const [mostraChiuseBolla, setMostraChiuseBolla] = useState(false);
+  const [bollaSelezionata, setBollaSelezionata] = useState(null);
+  const [teamSearch, setTeamSearch] = useState('');
+  const [teamDropOpen, setTeamDropOpen] = useState(false);
+  const teamDropRef = React.useRef(null);
+  React.useEffect(() => {
+    const h = (e) => { if (teamDropRef.current && !teamDropRef.current.contains(e.target)) setTeamDropOpen(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, []);
+
+  const staffOrdinato = [...staffSviluppo].sort((a, b) => {
+    const ro = { 'PM': 0, 'Consulente': 0, 'Analista': 1, 'Programmatore': 2 };
+    const ra = ro[a.ruolo] ?? 3, rb = ro[b.ruolo] ?? 3;
+    if (ra !== rb) return ra - rb;
+    return `${a.cognome} ${a.nome}`.localeCompare(`${b.cognome} ${b.nome}`);
+  });
+  const staffAggiungibile = staffOrdinato.filter(s => !teamLavoro.includes(`${s.cognome} ${s.nome}`));
+  const staffFiltrato = staffAggiungibile.filter(s =>
+    !teamSearch || `${s.cognome} ${s.nome}`.toLowerCase().includes(teamSearch.toLowerCase()) || (s.ruolo || '').toLowerCase().includes(teamSearch.toLowerCase())
+  );
+  const teamObjs = teamLavoro.map(key => staffSviluppo.find(s => `${s.cognome} ${s.nome}` === key)).filter(Boolean);
+
+  // Bolle state
+  const [bolleSearch, setBolleSearch] = useState('');
+  const [bolleDropOpen, setBolleDropOpen] = useState(false);
+  const bolleDropRef = React.useRef(null);
+  React.useEffect(() => {
+    const h = (e) => { if (bolleDropRef.current && !bolleDropRef.current.contains(e.target)) setBolleDropOpen(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, []);
+
+  const bolleAssociateObjs = bolleDisponibili.filter(b => bolleAssociate.includes(b.id));
+  // Escludi bolle già in altre commesse (ma non quelle già associate a questa commessa)
+  const bolleAggiungibili = bolleDisponibili.filter(b => !bolleAssociate.includes(b.id) && !bolleOccupate.has(b.id));
+  const bolleOccupateNonAssociate = bolleDisponibili.filter(b => !bolleAssociate.includes(b.id) && bolleOccupate.has(b.id)).length;
+  const bolleFiltrate = bolleAggiungibili.filter(b =>
+    !bolleSearch || b.codice.toLowerCase().includes(bolleSearch.toLowerCase()) || (b.descrizione || '').toLowerCase().includes(bolleSearch.toLowerCase())
+  );
+
+  const getBollaCalc = (b) => {
+    const giorniDisp = b.ore_previste ? (b.ore_previste / 8) : (b.giorni_disponibili || 0);
+    const cb = consuntiviPerBolla[b.codice] || { oreTec: 0, orePag: 0 };
+    const svolti = cb.oreTec / 8;
+    const pagamento = cb.orePag / 8;
+    const residui = giorniDisp - svolti;
+    const pct = giorniDisp > 0 ? Math.max(0, Math.min(100, (svolti / giorniDisp) * 100)) : 0;
+    const barColor = pct < 70 ? '#639922' : pct < 90 ? '#BA7517' : '#E24B4A';
+    const isChiusa = giorniDisp > 0 && residui <= 0;
+    return { giorniDisp, svolti, pagamento, residui, pct, barColor, isChiusa };
+  };
+
   // ── Sezione Team ───────────────────────────────────────────────
   const SectionTeam = () => (
     <div>
-      <MultiSelectDropdown
-        options={[...staffSviluppo].sort((a, b) => {
-          const ro = { 'PM': 0, 'Consulente': 0, 'Analista': 1, 'Programmatore': 2 };
-          const ra = ro[a.ruolo] ?? 3, rb = ro[b.ruolo] ?? 3;
-          if (ra !== rb) return ra - rb;
-          return `${a.cognome} ${a.nome}`.localeCompare(`${b.cognome} ${b.nome}`);
-        }).map(s => ({ value: `${s.cognome} ${s.nome}`, label: `${s.cognome} ${s.nome}`, sub: s.ruolo }))}
-        selected={teamLavoro} onChange={sel => setTeamLavoro(sel)}
-        placeholder="Cerca e seleziona risorse..."
-        accentColor="#0054a6" accentBg="#eff6ff" accentBorder="#bfdbfe"
-      />
+      <div ref={teamDropRef} style={{ position: 'relative', marginBottom: '14px' }}>
+        <button onClick={() => { setTeamDropOpen(v => !v); setTeamSearch(''); }}
+          style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '7px 16px', borderRadius: '8px', border: '1px solid #bfdbfe', background: '#eff6ff', color: '#0054a6', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}>
+          <i className="ti ti-plus" aria-hidden="true" style={{ fontSize: '13px' }} /> Aggiungi risorsa
+        </button>
+        {teamDropOpen && (
+          <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, minWidth: '300px', background: '#fff', border: '0.5px solid #e2e8f0', borderRadius: '10px', boxShadow: '0 8px 24px rgba(0,18,41,0.12)', zIndex: 300, overflow: 'hidden' }}>
+            <div style={{ padding: '8px 10px', borderBottom: '0.5px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: '7px' }}>
+              <svg width="12" height="12" viewBox="0 0 15 15" fill="none"><circle cx="6.5" cy="6.5" r="5" stroke="#94a3b8" strokeWidth="1.5"/><path d="M10 10l3 3" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round"/></svg>
+              <input value={teamSearch} onChange={e => setTeamSearch(e.target.value)} placeholder="Cerca risorsa..." autoFocus
+                style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '12px', flex: 1, fontFamily: 'inherit' }} />
+              {staffAggiungibile.length > 0 && <span style={{ fontSize: '10px', color: '#94a3b8', flexShrink: 0 }}>{staffAggiungibile.length} disponibili</span>}
+            </div>
+            <div style={{ maxHeight: '220px', overflowY: 'auto' }}>
+              {staffFiltrato.length === 0
+                ? <div style={{ padding: '12px', fontSize: '12px', color: '#94a3b8', fontStyle: 'italic' }}>Nessuna risorsa trovata</div>
+                : staffFiltrato.map(s => {
+                    const key = `${s.cognome} ${s.nome}`;
+                    const av = getAvatarColor(key);
+                    return (
+                      <div key={key} onClick={() => { setTeamLavoro(prev => [...prev, key]); setTeamDropOpen(false); setTeamSearch(''); }}
+                        style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px', cursor: 'pointer' }}
+                        onMouseOver={e => e.currentTarget.style.background = '#f8fafc'}
+                        onMouseOut={e => e.currentTarget.style.background = 'transparent'}>
+                        <div style={{ width: 28, height: 28, borderRadius: '50%', background: av.bg, color: av.text, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 700, flexShrink: 0 }}>{getInitials(key)}</div>
+                        <span style={{ fontSize: '13px', color: '#0f172a', flex: 1 }}>{key}</span>
+                        <span style={{ fontSize: '11px', color: '#94a3b8', fontStyle: 'italic' }}>{s.ruolo}</span>
+                      </div>
+                    );
+                  })
+              }
+            </div>
+          </div>
+        )}
+      </div>
+      {teamObjs.length === 0 ? (
+        <div style={{ padding: '24px', textAlign: 'center', border: '0.5px dashed #e2e8f0', borderRadius: '10px', color: '#94a3b8', fontSize: '13px', fontStyle: 'italic' }}>Nessuna risorsa nel team</div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          {teamObjs.map((s, i) => {
+            const key = `${s.cognome} ${s.nome}`;
+            const av = getAvatarColor(key);
+            const isPm = f.pm_commessa === key;
+            return (
+              <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', borderRadius: '8px', border: '0.5px solid #e2e8f0', background: i % 2 === 0 ? '#fff' : '#fafbfc' }}>
+                <div style={{ width: 30, height: 30, borderRadius: '50%', background: av.bg, color: av.text, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 700, flexShrink: 0 }}>{getInitials(key)}</div>
+                <span style={{ fontSize: '13px', fontWeight: 500, color: '#0f172a', flex: 1 }}>{key}</span>
+                {isPm && <span style={{ fontSize: '10px', fontWeight: 600, color: '#0054a6', background: '#eff6ff', border: '0.5px solid #bfdbfe', borderRadius: '4px', padding: '2px 7px', flexShrink: 0 }}>PM</span>}
+                {s.ruolo && <span style={{ fontSize: '11px', color: '#94a3b8', fontStyle: 'italic', flexShrink: 0 }}>{s.ruolo}</span>}
+                <button onClick={() => setTeamLavoro(prev => prev.filter(k => k !== key))}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#e2e8f0', fontSize: '14px', padding: '0 2px', flexShrink: 0 }}
+                  onMouseOver={e => e.currentTarget.style.color = '#dc2626'}
+                  onMouseOut={e => e.currentTarget.style.color = '#e2e8f0'}>
+                  <i className="ti ti-trash" aria-hidden="true" style={{ fontSize: '14px' }} />
+                </button>
+              </div>
+            );
+          })}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 14px 2px', borderTop: '0.5px solid #e2e8f0', marginTop: '4px' }}>
+            <span style={{ fontSize: '12px', color: '#64748b' }}>Totale risorse</span>
+            <span style={{ fontSize: '14px', fontWeight: 500, color: '#185FA5' }}>{teamObjs.length}</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 
@@ -702,10 +1059,107 @@ export function ProjectModal({ staff, clients, matrix, targetedEdit, onClose, on
     <div>
       {!selectedClientId ? (
         <div style={{ fontSize: '13px', color: '#94a3b8', fontStyle: 'italic' }}>Seleziona un cliente nella sezione Dati generali</div>
-      ) : bolleDisponibili.length === 0 ? (
-        <div style={{ fontSize: '13px', color: '#94a3b8', fontStyle: 'italic' }}>Nessuna bolla disponibile per questo cliente</div>
       ) : (
-        <BolleDropdown bolleDisponibili={bolleDisponibili} bolleAssociate={bolleAssociate} onToggle={id => setBolleAssociate(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])} consuntiviPerBolla={consuntiviPerBolla} />
+        <>
+          <div ref={bolleDropRef} style={{ position: 'relative', marginBottom: '14px' }}>
+            <button onClick={() => { setBolleDropOpen(v => !v); setBolleSearch(''); }}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '7px 16px', borderRadius: '8px', border: '1px solid #bfdbfe', background: '#eff6ff', color: '#0054a6', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}>
+              <i className="ti ti-plus" aria-hidden="true" style={{ fontSize: '13px' }} /> Associa bolla
+            </button>
+            {bolleDropOpen && (
+              <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, minWidth: '320px', background: '#fff', border: '0.5px solid #e2e8f0', borderRadius: '10px', boxShadow: '0 8px 24px rgba(0,18,41,0.12)', zIndex: 300, overflow: 'hidden' }}>
+                <div style={{ padding: '8px 10px', borderBottom: '0.5px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: '7px' }}>
+                  <svg width="12" height="12" viewBox="0 0 15 15" fill="none"><circle cx="6.5" cy="6.5" r="5" stroke="#94a3b8" strokeWidth="1.5"/><path d="M10 10l3 3" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                  <input value={bolleSearch} onChange={e => setBolleSearch(e.target.value)} placeholder="Cerca per codice o descrizione..." autoFocus
+                    style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '12px', flex: 1, fontFamily: 'inherit' }} />
+                  {bolleAggiungibili.length > 0 && <span style={{ fontSize: '10px', color: '#94a3b8', flexShrink: 0 }}>{bolleAggiungibili.length} disponibili</span>}
+                </div>
+                <div style={{ maxHeight: '220px', overflowY: 'auto' }}>
+                  {bolleFiltrate.length === 0
+                    ? <div style={{ padding: '12px', fontSize: '12px', color: '#94a3b8', fontStyle: 'italic' }}>
+                        {bolleOccupateNonAssociate > 0
+                          ? `Nessuna bolla libera (${bolleOccupateNonAssociate} già usate in altre commesse)`
+                          : 'Nessuna bolla disponibile'}
+                      </div>
+                    : bolleFiltrate.map(b => {
+                        const { giorniDisp, isChiusa } = getBollaCalc(b);
+                        return (
+                          <div key={b.id}
+                            onClick={() => { setBolleAssociate(prev => [...prev, b.id]); setBolleDropOpen(false); setBolleSearch(''); }}
+                            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', cursor: 'pointer', opacity: isChiusa ? 0.6 : 1 }}
+                            onMouseOver={e => e.currentTarget.style.background = '#f8fafc'}
+                            onMouseOut={e => e.currentTarget.style.background = 'transparent'}>
+                            <span style={{ fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums', fontSize: '11px', fontWeight: 700, color: '#0054a6', background: '#eff6ff', border: '0.5px solid #bfdbfe', borderRadius: '5px', padding: '2px 7px', flexShrink: 0 }}>{b.codice}</span>
+                            <span style={{ fontSize: '12px', color: '#64748b', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.descrizione || '—'}</span>
+                            {isChiusa && <span style={{ fontSize: '9px', background: '#E1F5EE', color: '#085041', border: '0.5px solid #9FE1CB', borderRadius: '4px', padding: '1px 5px', flexShrink: 0 }}>chiusa</span>}
+                            <span style={{ fontSize: '11px', fontWeight: 500, color: '#94a3b8', flexShrink: 0 }}>{giorniDisp.toFixed(1)}g</span>
+                          </div>
+                        );
+                      })
+                  }
+                </div>
+              </div>
+            )}
+          </div>
+
+          {bolleAssociateObjs.length === 0 ? (
+            <div style={{ padding: '24px', textAlign: 'center', border: '0.5px dashed #e2e8f0', borderRadius: '10px', color: '#94a3b8', fontSize: '13px', fontStyle: 'italic' }}>Nessuna bolla associata</div>
+          ) : (() => {
+            const bolleConCalc = bolleAssociateObjs.map(b => ({ ...b, ...getBollaCalc(b) }));
+            const bolleAperte = bolleConCalc.filter(b => !b.isChiusa);
+            const bolleChiuse = bolleConCalc.filter(b => b.isChiusa);
+
+            const renderBollaRow = (b, i) => (
+              <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', borderRadius: '8px', border: '0.5px solid #bfdbfe', background: i % 2 === 0 ? '#fff' : '#f8fafc', cursor: 'pointer', transition: 'all 0.12s', opacity: b.isChiusa ? 0.65 : 1 }}
+                onClick={() => setBollaSelezionata({ ...b, accent: '#185FA5', accentLight: '#E6F1FB', accentBorder: '#B5D4F4', _tipo: 'consulenza' })}
+                onMouseOver={e => { e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)'; }}
+                onMouseOut={e => { e.currentTarget.style.boxShadow = 'none'; }}>
+                <span style={{ fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums', fontSize: '12px', fontWeight: 700, color: '#185FA5', background: '#E6F1FB', border: '0.5px solid #B5D4F4', borderRadius: '5px', padding: '2px 8px', flexShrink: 0 }}>{b.codice}</span>
+                <span style={{ fontSize: '12px', color: '#64748b', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.descrizione || '—'}</span>
+                <div style={{ width: 44, flexShrink: 0 }}>
+                  <div style={{ height: 4, background: '#E6F1FB', borderRadius: '2px', overflow: 'hidden' }}>
+                    <div style={{ width: `${b.pct}%`, height: '100%', background: b.barColor, borderRadius: '2px' }} />
+                  </div>
+                </div>
+                <div style={{ flexShrink: 0, textAlign: 'right' }}>
+                  <div style={{ fontSize: '11px', fontWeight: 600, color: b.isChiusa ? '#94a3b8' : '#185FA5', fontVariantNumeric: 'tabular-nums' }}>{Math.max(0, b.residui).toFixed(1)}g res.</div>
+                  <div style={{ fontSize: '10px', color: '#94a3b8', fontVariantNumeric: 'tabular-nums' }}>{b.giorniDisp.toFixed(1)}g tot.</div>
+                </div>
+                <button onClick={e => { e.stopPropagation(); setBolleAssociate(prev => prev.filter(x => x !== b.id)); }}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#e2e8f0', padding: '0 2px', flexShrink: 0 }}
+                  onMouseOver={e => e.currentTarget.style.color = '#dc2626'}
+                  onMouseOut={e => e.currentTarget.style.color = '#e2e8f0'}>
+                  <i className="ti ti-trash" aria-hidden="true" style={{ fontSize: '14px' }} />
+                </button>
+                <span style={{ fontSize: '10px', color: '#94a3b8' }}>›</span>
+              </div>
+            );
+
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {bolleAperte.map((b, i) => renderBollaRow(b, i))}
+                {bolleAperte.length === 0 && <div style={{ fontSize: '12px', color: '#94a3b8', fontStyle: 'italic' }}>Nessuna bolla aperta</div>}
+                {bolleChiuse.length > 0 && (
+                  <div style={{ marginTop: '4px' }}>
+                    <div onClick={() => setMostraChiuseBolla(v => !v)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '5px 8px', borderRadius: '6px', background: '#f1f5f9', cursor: 'pointer', userSelect: 'none', marginBottom: mostraChiuseBolla ? '6px' : 0 }}>
+                      <span style={{ fontSize: '10px', color: '#94a3b8' }}>{mostraChiuseBolla ? '▼' : '▶'}</span>
+                      <span style={{ fontSize: '11px', fontWeight: 500, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Chiuse ({bolleChiuse.length})</span>
+                    </div>
+                    {mostraChiuseBolla && <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>{bolleChiuse.map((b, i) => renderBollaRow(b, i))}</div>}
+                  </div>
+                )}
+                {bolleAssociateObjs.length > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 14px 2px', borderTop: '0.5px solid #e2e8f0', marginTop: '4px' }}>
+                    <span style={{ fontSize: '12px', color: '#64748b' }}>Totale giorni</span>
+                    <span style={{ fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums', fontSize: '14px', fontWeight: 500, color: '#185FA5' }}>
+                      {bolleAssociateObjs.reduce((s, b) => s + (b.giorni_disponibili || 0), 0).toFixed(1)}g
+                    </span>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+        </>
       )}
     </div>
   );
@@ -717,7 +1171,7 @@ export function ProjectModal({ staff, clients, matrix, targetedEdit, onClose, on
         <div style={{ fontSize: '13px', color: '#94a3b8', fontStyle: 'italic' }}>Salva prima la commessa per aggiungere ordini</div>
       ) : (
         <>
-          {showOrdineForm && <OrdineForm onSave={handleAddOrdine} onCancel={() => setShowOrdineForm(false)} />}
+          {showOrdineForm && <OrdineForm onSave={handleAddOrdine} onCancel={() => setShowOrdineForm(false)} bolleDisponibili={bolleAssociateObjs} bolleGiaAssegnate={bolleAssociateObjs.filter(b => b.ordine_id).map(b => b.id)} />}
           {!showOrdineForm && (
             <button onClick={() => setShowOrdineForm(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '7px 16px', borderRadius: '8px', border: '1px solid #bfdbfe', background: '#eff6ff', color: '#0054a6', fontSize: '13px', fontWeight: 500, cursor: 'pointer', marginBottom: '14px' }}>
               <i className="ti ti-plus" aria-hidden="true" style={{ fontSize: '13px' }} /> Aggiungi ordine
@@ -727,17 +1181,30 @@ export function ProjectModal({ staff, clients, matrix, targetedEdit, onClose, on
             <div style={{ padding: '24px', textAlign: 'center', border: '0.5px dashed #e2e8f0', borderRadius: '10px', color: '#94a3b8', fontSize: '13px', fontStyle: 'italic' }}>Nessun ordine associato</div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              {ordiniCommessa.map((o, i) => (
-                <div key={o.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', borderRadius: '8px', border: '0.5px solid #e2e8f0', background: i % 2 === 0 ? '#fff' : '#fafbfc' }}>
+              {ordiniCommessa.map((o, i) => {
+                // Bolle associate a questo ordine
+                const bolleOrdine = bolleDisponibili.filter(b => b.ordine_id === o.id);
+                return (
+                <div key={o.id}
+                  onClick={() => bolleOrdine.length > 0 && setOrdinePopup({ ordine: o, bolle: bolleOrdine })}
+                  style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', borderRadius: '8px', border: '0.5px solid #e2e8f0', background: i % 2 === 0 ? '#fff' : '#fafbfc', cursor: bolleOrdine.length > 0 ? 'pointer' : 'default', transition: 'all .12s' }}
+                  onMouseOver={e => { if (bolleOrdine.length > 0) { e.currentTarget.style.background = '#f0f7ff'; e.currentTarget.style.borderColor = '#bfdbfe'; } }}
+                  onMouseOut={e => { e.currentTarget.style.background = i % 2 === 0 ? '#fff' : '#fafbfc'; e.currentTarget.style.borderColor = '#e2e8f0'; }}>
                   <span style={{ fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums', fontSize: '12px', fontWeight: 600, color: '#0054a6', background: '#eff6ff', border: '0.5px solid #bfdbfe', borderRadius: '5px', padding: '2px 8px', flexShrink: 0 }}>{o.codice}·{o.numero}</span>
                   <span style={{ fontSize: '12px', color: '#64748b' }}>{o.data ? new Date(o.data + 'T00:00:00').toLocaleDateString('it-IT') : '—'}</span>
                   <span style={{ flex: 1 }} />
+                  {bolleOrdine.length > 0 && (
+                    <span style={{ fontSize: '10px', color: '#185FA5', background: '#eff6ff', border: '0.5px solid #bfdbfe', borderRadius: 20, padding: '1px 8px', flexShrink: 0 }}>
+                      {bolleOrdine.length} boll{bolleOrdine.length === 1 ? 'a' : 'e'} ›
+                    </span>
+                  )}
                   <span style={{ fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums', fontSize: '13px', fontWeight: 500, color: '#0f172a' }}>{o.importo ? fmtEur(o.importo) : '—'}</span>
-                  <button onClick={() => handleDeleteOrdine(o.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#e2e8f0', fontSize: '14px', padding: '0 2px' }} onMouseOver={e => e.currentTarget.style.color = '#dc2626'} onMouseOut={e => e.currentTarget.style.color = '#e2e8f0'}>
+                  <button onClick={e => { e.stopPropagation(); handleDeleteOrdine(o.id); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#e2e8f0', fontSize: '14px', padding: '0 2px' }} onMouseOver={e => { e.stopPropagation(); e.currentTarget.style.color = '#dc2626'; }} onMouseOut={e => e.currentTarget.style.color = '#e2e8f0'}>
                     <i className="ti ti-trash" aria-hidden="true" style={{ fontSize: '14px' }} />
                   </button>
                 </div>
-              ))}
+                );
+              })}
               {ordiniCommessa.length > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 14px 2px', borderTop: '0.5px solid #e2e8f0', marginTop: '4px' }}>
                   <span style={{ fontSize: '12px', color: '#64748b' }}>Totale valore</span>
@@ -890,6 +1357,377 @@ export function ProjectModal({ staff, clients, matrix, targetedEdit, onClose, on
     );
   };
 
+  // ── Sezione Piano Fatturazione ────────────────────────────────
+// ── Andamento component ───────────────────────────────────────────
+function SectionAndamento({ ordiniCommessa, andamentoData }) {
+  const COSTO_GIORNO = 380;
+  const fmtEur = n => new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n);
+  const fmtN = (n, d = 1) => Number(n).toFixed(d).replace('.', ',');
+  const valore = ordiniCommessa.reduce((s, o) => s + (parseFloat(o.importo) || 0), 0);
+  const giorniTec = andamentoData.oreTecniche / 8;
+  const giorniPag = andamentoData.orePagamento / 8;
+  const costo = giorniTec * COSTO_GIORNO;
+  const margine = valore - costo;
+  const marginePerc = valore > 0 ? (margine / valore) * 100 : null;
+  const giorniResidui = andamentoData.giorniBolle - giorniPag;
+  const efficacia = giorniTec > 0 ? (giorniPag / giorniTec) * 100 : null;
+  const margineColor = margine >= 0 && valore > 0 ? '#16a34a' : valore > 0 ? '#dc2626' : '#94a3b8';
+  const efficaciaColor = efficacia === null ? '#94a3b8' : efficacia >= 80 ? '#16a34a' : efficacia >= 60 ? '#f59e0b' : '#dc2626';
+  const residuiColor = giorniResidui > 0 ? '#16a34a' : giorniResidui < 0 ? '#dc2626' : '#94a3b8';
+
+  // Stile KPI identico a PianoFatturazione: sfondo colorato, bordo colorato, no accent top
+  const KpiCard = ({ label, value, sub, color, bg, border, barPct, barColor }) => (
+    <div style={{ background: bg || '#f8fafc', border: `1px solid ${border || '#e2e8f0'}`, borderRadius: 10, padding: '10px 14px' }}>
+      <div style={{ fontSize: 16, fontWeight: 600, color: color || '#0f172a', fontVariantNumeric: 'tabular-nums', marginBottom: 2 }}>{value}</div>
+      <div style={{ fontSize: 11, color: '#64748b', marginBottom: barPct != null ? 8 : 0 }}>{label}</div>
+      {sub && <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 1 }}>{sub}</div>}
+      {barPct != null && (
+        <div style={{ height: 3, background: 'rgba(0,0,0,0.08)', borderRadius: 2, overflow: 'hidden', marginTop: 6 }}>
+          <div style={{ width: `${Math.min(100, Math.abs(barPct))}%`, height: '100%', background: barColor || color || '#3b82f6', borderRadius: 2 }} />
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
+      {/* Economico */}
+      <div>
+        <div style={{ fontSize: 10, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 10 }}>Economico</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+          <KpiCard label="Valore contratto" value={valore > 0 ? fmtEur(valore) : '—'}
+            color="#001d47" bg="#eff6ff" border="#bfdbfe"
+            sub={ordiniCommessa.length > 0 ? `${ordiniCommessa.length} ordini` : 'Nessun ordine'} />
+          <KpiCard label="Costo manodopera" value={andamentoData.loadingAnd ? '...' : costo > 0 ? fmtEur(costo) : '—'}
+            color="#9a3412" bg="#fff7ed" border="#fed7aa"
+            sub={costo > 0 ? `${fmtN(giorniTec)}g · ${COSTO_GIORNO} €/g` : 'da consuntivi'}
+            barPct={valore > 0 ? (costo/valore)*100 : null} barColor="#D85A30" />
+          <KpiCard label="Margine"
+            value={marginePerc !== null ? `${margine >= 0 ? '+' : ''}${fmtN(marginePerc)}%` : '—'}
+            color={margineColor}
+            bg={margine >= 0 && valore > 0 ? '#f0fdf4' : valore > 0 ? '#fef2f2' : '#f8fafc'}
+            border={margine >= 0 && valore > 0 ? '#bbf7d0' : valore > 0 ? '#fecaca' : '#e2e8f0'}
+            sub={marginePerc !== null ? fmtEur(margine) : 'Inserisci ordini'} />
+        </div>
+      </div>
+      {/* Giorni */}
+      <div>
+        <div style={{ fontSize: 10, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 10 }}>Giorni</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 10 }}>
+          {/* Bolle + Residui */}
+          <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 10, padding: '10px 14px' }}>
+            <div style={{ fontSize: 16, fontWeight: 600, color: '#001d47', fontVariantNumeric: 'tabular-nums', marginBottom: 2 }}>
+              {andamentoData.loadingAnd ? '...' : andamentoData.giorniBolle > 0 ? `${fmtN(andamentoData.giorniBolle)}g` : '—'}
+            </div>
+            <div style={{ fontSize: 11, color: '#64748b' }}>Bolle previste</div>
+            <div style={{ height: '0.5px', background: '#bfdbfe', margin: '8px 0 6px' }} />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+              <span style={{ fontSize: 10, color: '#64748b' }}>Residui</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: residuiColor, fontVariantNumeric: 'tabular-nums' }}>
+                {andamentoData.loadingAnd ? '...' : andamentoData.giorniBolle > 0 ? `${fmtN(giorniResidui)}g` : '—'}
+              </span>
+            </div>
+          </div>
+          <KpiCard label="Giorni tecnici" value={andamentoData.loadingAnd ? '...' : giorniTec > 0 ? `${fmtN(giorniTec)}g` : '—'}
+            color="#334155" bg="#f8fafc" border="#e2e8f0"
+            sub={giorniTec > 0 ? `${fmtN(giorniTec*8)}h totali` : 'da consuntivi'}
+            barPct={andamentoData.giorniBolle > 0 ? (giorniTec/andamentoData.giorniBolle)*100 : null} barColor="#64748b" />
+          <KpiCard label="Giorni pagamento" value={andamentoData.loadingAnd ? '...' : giorniPag > 0 ? `${fmtN(giorniPag)}g` : '—'}
+            color="#0C447C" bg="#eff6ff" border="#bfdbfe"
+            sub={giorniPag > 0 ? `${fmtN(giorniPag*8)}h fatturabili` : 'da consuntivi'}
+            barPct={andamentoData.giorniBolle > 0 ? (giorniPag/andamentoData.giorniBolle)*100 : null} barColor="#185FA5" />
+          <KpiCard label="Efficacia"
+            value={efficacia !== null ? `${fmtN(efficacia)}%` : '—'}
+            color={efficaciaColor}
+            bg={efficacia === null ? '#f8fafc' : efficacia >= 80 ? '#f0fdf4' : efficacia >= 60 ? '#fffbeb' : '#fef2f2'}
+            border={efficacia === null ? '#e2e8f0' : efficacia >= 80 ? '#bbf7d0' : efficacia >= 60 ? '#fde68a' : '#fecaca'}
+            sub={efficacia !== null ? (efficacia >= 80 ? 'ottima copertura' : efficacia >= 60 ? 'copertura parziale' : 'bassa copertura') : 'pag / tec'}
+            barPct={efficacia !== null ? Math.min(100, efficacia) : null} barColor={efficaciaColor} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Piano Fatturazione component ─────────────────────────────
+function PianoFatturazione({ ordiniCommessa, bolleDisponibili, bolleAssociate, consuntiviPerBolla }) {
+    const [pfVista, setPfVista] = React.useState('dettaglio'); // 'dettaglio' | 'grafico'
+    const [pfFilterBolla, setPfFilterBolla] = React.useState('');
+    const [pfFilterOrdine, setPfFilterOrdine] = React.useState('');
+
+    const MESI_IT_PF = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
+    const fmtE = n => new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR', minimumFractionDigits: 0 }).format(n);
+    const fmtD = iso => { if (!iso) return '—'; const [y,m,d] = iso.split('-'); return `${d}/${m}/${y}`; };
+
+    // Bolle associate con dati
+    const bolleConDati = bolleDisponibili
+      .filter(b => bolleAssociate.includes(b.id))
+      .filter(b => !pfFilterBolla || b.codice === pfFilterBolla);
+
+    // Costruisce righe consuntivo arricchite
+    const righeDettaglio = React.useMemo(() => {
+      const rows = [];
+      bolleConDati.forEach(b => {
+        const cb = consuntiviPerBolla[b.codice] || { oreTec: 0, orePag: 0 };
+        const giorniDisp = b.giorni_disponibili || 0;
+        // Trova ordine collegato tramite ordine_id reale
+        const ordineCollegato = b.ordine_id ? ordiniCommessa.find(o => o.id === b.ordine_id) : null;
+        // Valore giorno/ora basato sull'ordine collegato e i giorni della bolla
+        const vgOra = ordineCollegato && giorniDisp > 0
+          ? (parseFloat(ordineCollegato.importo) || 0) / giorniDisp / 8
+          : 0;
+        rows.push({
+          bolla: b.codice,
+          bollDesc: b.descrizione || '—',
+          ordineLabel: ordineCollegato ? `${ordineCollegato.codice}·${ordineCollegato.numero}` : '—',
+          ordineData: ordineCollegato?.data || null,
+          ordineImporto: ordineCollegato ? (parseFloat(ordineCollegato.importo) || 0) : 0,
+          giorniDisp,
+          oreTec: cb.oreTec,
+          orePag: cb.orePag,
+          giorniTec: cb.oreTec / 8,
+          giorniPag: cb.orePag / 8,
+          erogato: vgOra * cb.oreTec,
+          pct: giorniDisp > 0 ? Math.min(100, Math.round((cb.oreTec/8) / giorniDisp * 100)) : null,
+        });
+      });
+      return rows;
+    }, [bolleConDati, consuntiviPerBolla, ordiniCommessa]);
+
+    // KPI aggregati
+    const ordiniFiltratiPF = ordiniCommessa.filter(o => !pfFilterOrdine || `${o.codice}·${o.numero}` === pfFilterOrdine);
+    const totFatturato = ordiniFiltratiPF.reduce((s,o) => s + (parseFloat(o.importo)||0), 0);
+    const totOreTec = righeDettaglio.reduce((s,r) => s + r.oreTec, 0);
+    const totOrePag = righeDettaglio.reduce((s,r) => s + r.orePag, 0);
+    const totGiorniDisp = bolleConDati.reduce((s,b) => s + (b.giorni_disponibili||0), 0);
+    const vgOraGlobale = totGiorniDisp > 0 && totFatturato > 0 ? (totFatturato / totGiorniDisp) / 8 : 0;
+    const totErogato = totOreTec * vgOraGlobale;
+    const daErogareEuro = Math.max(0, totFatturato - totErogato);
+    const daErogareGg = Math.max(0, totGiorniDisp - totOreTec/8);
+
+    const ordiniFiltro = ordiniCommessa.map(o => `${o.codice}·${o.numero}`);
+    const bolleFiltro = bolleDisponibili.filter(b => bolleAssociate.includes(b.id)).map(b => b.codice);
+
+    // Dati grafico SVG
+    const chartData = React.useMemo(() => {
+      const mesiMap = {};
+      const add = (mk, key, val) => {
+        if (!mesiMap[mk]) mesiMap[mk] = { ordine: 0, consuntivo: 0 };
+        mesiMap[mk][key] = (mesiMap[mk][key]||0) + val;
+      };
+      // Ordini — posizionati nel mese della loro data
+      ordiniCommessa.forEach(o => {
+        if (o.data) add(o.data.slice(0,7), 'ordine', parseFloat(o.importo)||0);
+      });
+      // Consuntivi per bolla — distribuiti per mese tramite ordine collegato
+      bolleConDati.forEach(b => {
+        const cb = consuntiviPerBolla[b.codice] || { oreTec: 0 };
+        if (!cb.oreTec) return;
+        const ordine = b.ordine_id ? ordiniCommessa.find(o => o.id === b.ordine_id) : null;
+        const giorniDisp = b.giorni_disponibili || 0;
+        const vgOra = ordine && giorniDisp > 0 ? (parseFloat(ordine.importo)||0) / giorniDisp / 8 : 0;
+        if (!vgOra) return;
+        const mese = ordine?.data ? ordine.data.slice(0,7) : null;
+        if (mese) add(mese, 'consuntivo', cb.oreTec * vgOra);
+      });
+      // Consuntivi per mese — usiamo andamentoData mensile se disponibile
+      // Approssimazione: distribuiamo proporzionalmente
+      // In futuro: query diretta per mese
+      return Object.keys(mesiMap).sort().map(mk => {
+        const [y,mo] = mk.split('-');
+        return { label: `${MESI_IT_PF[Number(mo)-1]} ${y.slice(2)}`, ...mesiMap[mk] };
+      });
+    }, [ordiniCommessa]);
+
+    const selStyle = { padding: '5px 9px', border: '1px solid #e2e8f0', borderRadius: 7, fontSize: 11, outline: 'none', fontFamily: 'inherit', background: '#fff', color: '#0f172a' };
+
+    // SVG grafico
+    const SvgChart = ({ data }) => {
+      const [tip, setTip] = React.useState(null);
+      if (!data.length) return <div style={{ height: 160, display:'flex', alignItems:'center', justifyContent:'center', color:'#94a3b8', fontSize:12 }}>Nessun dato grafico disponibile</div>;
+      const W=520, H=160, pL=44, pR=8, pT=8, pB=28;
+      const cW=W-pL-pR, cH=H-pT-pB;
+      const maxV = Math.max(...data.flatMap(d => [d.ordine||0, d.consuntivo||0]), 1);
+      const niceMax = Math.ceil(maxV/1000)*1000 || 1000;
+      const ticks = [0, Math.round(niceMax/2), niceMax];
+      const bW = Math.min(28, (cW/data.length)*0.35);
+      const fmtS = v => v>=1000?`€${(v/1000).toFixed(0)}k`:`€${v}`;
+      return (
+        <div style={{ position:'relative', width:'100%', overflowX:'auto' }}>
+          <svg viewBox={`0 0 ${W} ${H}`} style={{ width:'100%', fontFamily:'inherit' }}>
+            {ticks.map(t => {
+              const y = pT + cH - (t/niceMax)*cH;
+              return <g key={t}>
+                <line x1={pL} y1={y} x2={W-pR} y2={y} stroke="#f1f5f9" strokeWidth="1"/>
+                <text x={pL-4} y={y+3} textAnchor="end" fontSize="9" fill="#94a3b8">{fmtS(t)}</text>
+              </g>;
+            })}
+            {data.map((d,gi) => {
+              const gx = pL + gi*(cW/data.length) + (cW/data.length)*0.1;
+              const items = [
+                { key:'ordine', color:'#001d47', label:'Ordine', val:d.ordine||0 },
+                { key:'consuntivo', color:'#FAC775', label:'Erogato', val:d.consuntivo||0 },
+              ];
+              return <g key={d.label}>
+                {items.map((it,ki) => {
+                  const val = it.val; if (!val) return null;
+                  const bh = (val/niceMax)*cH;
+                  const x = gx + ki*(bW+2);
+                  const y = pT+cH-bh;
+                  return <rect key={it.key} x={x} y={y} width={bW} height={bh} fill={it.color} rx="2"
+                    style={{cursor:'pointer'}}
+                    onMouseEnter={e=>setTip({gi,key:it.key,val,label:d.label,name:it.label,x:e.clientX,y:e.clientY})}
+                    onMouseLeave={()=>setTip(null)}/>;
+                })}
+                <text x={gx+(bW+2)} y={H-pB+12} textAnchor="middle" fontSize="9" fill="#94a3b8">{d.label}</text>
+              </g>;
+            })}
+          </svg>
+          {tip && <div style={{ position:'fixed', top:tip.y-50, left:tip.x+10, background:'#fff', border:'1px solid #e2e8f0', borderRadius:8, padding:'7px 10px', fontSize:11, boxShadow:'0 4px 12px rgba(0,0,0,0.1)', zIndex:200, pointerEvents:'none' }}>
+            <div style={{ fontWeight:700, color:'#0f172a', marginBottom:3 }}>{tip.label}</div>
+            <div style={{ display:'flex', gap:6, alignItems:'center' }}>
+              <span style={{ width:8,height:8,borderRadius:1,background:tip.key==='ordine'?'#001d47':'#FAC775',display:'inline-block' }}/>
+              <span style={{ color:'#475569' }}>{tip.name}:</span>
+              <span style={{ fontWeight:600 }}>{fmtE(tip.val)}</span>
+            </div>
+          </div>}
+        </div>
+      );
+    };
+
+    return (
+      <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
+
+        {/* KPI strip */}
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:10 }}>
+          {[
+            { label:'Totale ordinato', val:fmtE(totFatturato), color:'#001d47', bg:'#eff6ff', border:'#bfdbfe' },
+            { label:'Da erogare (€)', val:fmtE(daErogareEuro), color:daErogareEuro>0?'#16a34a':'#94a3b8', bg:daErogareEuro>0?'#f0fdf4':'#f8fafc', border:daErogareEuro>0?'#bbf7d0':'#e2e8f0' },
+            { label:'Da erogare (gg)', val:`${daErogareGg.toFixed(1)} gg`, color:'#854F0B', bg:'#fffbeb', border:'#fde68a' },
+          ].map(k => (
+            <div key={k.label} style={{ background:k.bg, border:`1px solid ${k.border}`, borderRadius:10, padding:'10px 14px' }}>
+              <div style={{ fontSize:16, fontWeight:600, color:k.color, fontVariantNumeric:'tabular-nums', marginBottom:2 }}>{k.val}</div>
+              <div style={{ fontSize:10, color:'#64748b' }}>{k.label}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Filtri + toggle vista */}
+        <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
+          <select value={pfFilterBolla} onChange={e=>setPfFilterBolla(e.target.value)} style={selStyle}>
+            <option value=''>Tutte le bolle</option>
+            {bolleFiltro.map(b=><option key={b} value={b}>{b}</option>)}
+          </select>
+          <select value={pfFilterOrdine} onChange={e=>setPfFilterOrdine(e.target.value)} style={selStyle}>
+            <option value=''>Tutti gli ordini</option>
+            {ordiniFiltro.map(o=><option key={o} value={o}>{o}</option>)}
+          </select>
+          {(pfFilterBolla||pfFilterOrdine) && <button onClick={()=>{setPfFilterBolla('');setPfFilterOrdine('');}} style={{ fontSize:11, padding:'4px 10px', borderRadius:7, border:'0.5px solid #e2e8f0', background:'#f8fafc', color:'#64748b', cursor:'pointer', fontFamily:'inherit' }}>Reset</button>}
+          <div style={{ marginLeft:'auto', display:'flex', gap:5, background:'#f1f5f9', borderRadius:20, padding:2 }}>
+            {[{key:'dettaglio',icon:'ti-list'},{key:'grafico',icon:'ti-chart-bar'}].map(v=>(
+              <button key={v.key} onClick={()=>setPfVista(v.key)}
+                style={{ display:'flex', alignItems:'center', gap:4, padding:'4px 12px', borderRadius:20, border:'none', background:pfVista===v.key?'#fff':'transparent', color:pfVista===v.key?'#0f172a':'#64748b', fontSize:11, cursor:'pointer', fontFamily:'inherit', fontWeight:pfVista===v.key?600:400 }}>
+                <i className={`ti ${v.icon}`} style={{ fontSize:12 }}/>{v.key==='dettaglio'?'Dettaglio':'Grafico'}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Vista dettaglio */}
+        {pfVista === 'dettaglio' && (
+          <div style={{ background:'#fff', border:'0.5px solid #e2e8f0', borderRadius:12, overflow:'hidden' }}>
+            <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
+              <thead>
+                <tr style={{ background:'#f8fafc' }}>
+                  {['Bolla','Descrizione','Ordini','Gg prev.','Gg tec.','Gg pag.','Avanz.'].map(h=>(
+                    <th key={h} style={{ padding:'8px 10px', textAlign:['Gg prev.','Gg tec.','Gg pag.','Avanz.'].includes(h)?'right':'left', fontSize:10, fontWeight:600, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'.05em', borderBottom:'1px solid #e2e8f0' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {righeDettaglio.length === 0 && (
+                  <tr><td colSpan={7} style={{ padding:'20px', textAlign:'center', color:'#94a3b8', fontSize:12, fontStyle:'italic' }}>Nessuna bolla associata</td></tr>
+                )}
+                {righeDettaglio.map((r,i) => {
+                  // Ordini collegati alla commessa
+                  const ordiniStr = r.ordineLabel || '—';
+                  const barColor = r.pct===null?'#e2e8f0':r.pct>=100?'#16a34a':r.pct>=60?'#d97706':'#185FA5';
+                  return (
+                    <tr key={i} style={{ borderBottom:'0.5px solid #f1f5f9' }}
+                      onMouseOver={e=>e.currentTarget.style.background='#f8fafc'}
+                      onMouseOut={e=>e.currentTarget.style.background='transparent'}>
+                      <td style={{ padding:'9px 10px', fontWeight:700, color:'#001d47', fontFamily:'monospace' }}>{r.bolla}</td>
+                      <td style={{ padding:'9px 10px', color:'#475569', fontSize:11, maxWidth:140, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{r.bollDesc}</td>
+                      <td style={{ padding:'9px 10px', fontSize:10, color:'#64748b' }}>{ordiniStr}</td>
+                      <td style={{ padding:'9px 10px', textAlign:'right', color:'#475569', fontVariantNumeric:'tabular-nums' }}>{r.giorniDisp.toFixed(1)}</td>
+                      <td style={{ padding:'9px 10px', textAlign:'right', color:'#185FA5', fontVariantNumeric:'tabular-nums', fontWeight:500 }}>{r.giorniTec.toFixed(1)}</td>
+                      <td style={{ padding:'9px 10px', textAlign:'right', color:'#0C447C', fontVariantNumeric:'tabular-nums', fontWeight:500 }}>{r.giorniPag.toFixed(1)}</td>
+                      <td style={{ padding:'9px 10px', textAlign:'right' }}>
+                        {r.pct !== null ? (
+                          <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:2 }}>
+                            <span style={{ fontSize:10, fontWeight:700, color:barColor }}>{r.pct}%</span>
+                            <div style={{ width:48, height:3, background:'#e2e8f0', borderRadius:2 }}>
+                              <div style={{ width:`${r.pct}%`, height:'100%', background:barColor, borderRadius:2 }}/>
+                            </div>
+                          </div>
+                        ) : <span style={{ fontSize:10, color:'#cbd5e1' }}>—</span>}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Vista grafico */}
+        {pfVista === 'grafico' && (
+          <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+            <div style={{ display:'flex', gap:12 }}>
+              {[{color:'#001d47',label:'Ordine (data ordine)'},{color:'#FAC775',label:'Erogato'}].map(l=>(
+                <div key={l.label} style={{ display:'flex', alignItems:'center', gap:5 }}>
+                  <div style={{ width:10,height:10,borderRadius:1,background:l.color,flexShrink:0 }}/>
+                  <span style={{ fontSize:11, color:'#475569' }}>{l.label}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{ background:'#fff', border:'0.5px solid #e2e8f0', borderRadius:12, padding:'14px 12px' }}>
+              <SvgChart data={chartData} />
+            </div>
+            {/* Tabella ordini */}
+            <div style={{ background:'#fff', border:'0.5px solid #e2e8f0', borderRadius:12, overflow:'hidden' }}>
+              <div style={{ padding:'8px 12px', borderBottom:'0.5px solid #e2e8f0', fontSize:10, fontWeight:600, color:'#64748b', textTransform:'uppercase', letterSpacing:'.06em' }}>Ordini</div>
+              <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
+                <thead>
+                  <tr style={{ background:'#f8fafc' }}>
+                    {['Codice·N°','Data','Importo'].map(h=>(
+                      <th key={h} style={{ padding:'7px 12px', textAlign:h==='Importo'?'right':'left', fontSize:10, fontWeight:600, color:'#94a3b8', textTransform:'uppercase', borderBottom:'1px solid #e2e8f0' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {ordiniCommessa.length === 0 && (
+                    <tr><td colSpan={3} style={{ padding:16, textAlign:'center', color:'#94a3b8', fontSize:12, fontStyle:'italic' }}>Nessun ordine</td></tr>
+                  )}
+                  {ordiniCommessa.map((o,i)=>(
+                    <tr key={o.id} style={{ borderBottom:'0.5px solid #f1f5f9' }}
+                      onMouseOver={e=>e.currentTarget.style.background='#f8fafc'}
+                      onMouseOut={e=>e.currentTarget.style.background='transparent'}>
+                      <td style={{ padding:'8px 12px', fontWeight:600, color:'#001d47', fontFamily:'monospace' }}>{o.codice}·{o.numero}</td>
+                      <td style={{ padding:'8px 12px', color:'#475569' }}>{fmtD(o.data)}</td>
+                      <td style={{ padding:'8px 12px', textAlign:'right', fontWeight:600, color:'#0f172a', fontVariantNumeric:'tabular-nums' }}>{o.importo?fmtE(o.importo):'—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+}
+
+
   // ── Helper FormField ───────────────────────────────────────────
   const FormField = ({ label, children, fullWidth }) => (
     <div style={{ gridColumn: fullWidth ? '1 / -1' : 'auto', marginBottom: '18px' }}>
@@ -899,8 +1737,8 @@ export function ProjectModal({ staff, clients, matrix, targetedEdit, onClose, on
   );
 
   // ── Sezione attiva ─────────────────────────────────────────────
-  const sectionTitle = { generale: 'Dati generali', team: 'Team di lavoro', bolle: 'Bolle di commessa', ordini: 'Ordini cliente', sviluppo: 'Attività sviluppo' };
-  const sectionSub = { generale: 'Cliente, nome, date e tipo commessa', team: 'Risorse assegnate a questa commessa', bolle: 'Bolle di lavoro associate', ordini: 'Ordini e valore contrattuale', sviluppo: 'Attività di sviluppo collegate' };
+  const sectionTitle = { generale: 'Dati generali', team: 'Team di lavoro', bolle: 'Bolle di commessa', ordini: 'Ordini cliente', sviluppo: 'Attività sviluppo', pianoFatturazione: 'Piano Fatturazione', andamento: 'Andamento' };
+  const sectionSub = { generale: 'Cliente, nome, date e tipo commessa', team: 'Risorse assegnate a questa commessa', bolle: 'Bolle di lavoro associate', ordini: 'Ordini e valore contrattuale', sviluppo: 'Attività di sviluppo collegate', pianoFatturazione: 'Consuntivi e valore per ordine e bolla', andamento: 'Economico, giorni da bolle e consuntivato' };
 
   const fmtDate = d => { if (!d) return null; const [y, m, dd] = d.split('-'); return `${dd}/${m}/${y}`; };
 
@@ -942,13 +1780,7 @@ export function ProjectModal({ staff, clients, matrix, targetedEdit, onClose, on
                   <div style={{ fontSize: '11px', color: '#94a3b8' }}>{fmtDate(f.data_inizio) || '—'} → {fmtDate(f.data_fine) || '—'}</div>
                 )}
               </div>
-              {/* KPI Economico compatto */}
-              {selectedCommessaId && (
-                <div style={{ borderTop: '0.5px solid #e2e8f0', padding: '10px 12px', background: '#fafbfc' }}>
-                  <div style={{ fontSize: '10px', fontWeight: 500, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>Economico</div>
-                  <KpiEconomicoSidebar commessaId={selectedCommessaId} ordiniCommessa={ordiniCommessa} />
-                </div>
-              )}
+              {/* KPI Economico compatto - rimosso, visibile in sezione Andamento */}
             </div>
           </div>
 
@@ -957,11 +1789,13 @@ export function ProjectModal({ staff, clients, matrix, targetedEdit, onClose, on
             <div style={{ padding: '22px 28px', flex: 1, overflowY: 'auto', minHeight: 0 }}>
               <div style={{ fontSize: '15px', fontWeight: 500, color: '#0f172a', marginBottom: '4px' }}>{sectionTitle[activeSection]}</div>
               <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '22px' }}>{sectionSub[activeSection]}</div>
-              {activeSection === 'generale' && <SectionGenerale />}
-              {activeSection === 'team' && <SectionTeam />}
-              {activeSection === 'bolle' && <SectionBolle />}
-              {activeSection === 'ordini' && <SectionOrdini />}
-              {activeSection === 'sviluppo' && <SectionSviluppo />}
+              {activeSection === 'generale' && SectionGenerale()}
+              {activeSection === 'team' && SectionTeam()}
+              {activeSection === 'bolle' && SectionBolle()}
+              {activeSection === 'ordini' && SectionOrdini()}
+              {activeSection === 'sviluppo' && SectionSviluppo()}
+              {activeSection === 'pianoFatturazione' && <PianoFatturazione ordiniCommessa={ordiniCommessa} bolleDisponibili={bolleDisponibili} bolleAssociate={bolleAssociate} consuntiviPerBolla={consuntiviPerBolla} />}
+              {activeSection === 'andamento' && <SectionAndamento ordiniCommessa={ordiniCommessa} andamentoData={andamentoData} />}
             </div>
 
             {/* ── FOOTER AZIONI ── */}
@@ -1007,6 +1841,61 @@ export function ProjectModal({ staff, clients, matrix, targetedEdit, onClose, on
         </div>
 
       </div>
+
+      {/* ── POPUP BOLLE ORDINE ── */}
+      {ordinePopup && (
+        <div onClick={e => { e.stopPropagation(); setOrdinePopup(null); }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,18,41,0.45)', zIndex: 1200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 14, width: 380, maxHeight: '80vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 16px 48px rgba(0,0,0,0.22)' }}>
+            <div style={{ background: 'var(--brand-800,#001d47)', padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>Bolle associate</div>
+                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginTop: 1 }}>{ordinePopup.ordine.codice}·{ordinePopup.ordine.numero}</div>
+              </div>
+              <button onClick={() => setOrdinePopup(null)} style={{ background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 7, color: '#fff', cursor: 'pointer', padding: '3px 8px', fontSize: 16 }}>×</button>
+            </div>
+            <div style={{ overflowY: 'auto', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {ordinePopup.bolle.map(b => {
+                const cb = consuntiviPerBolla[b.codice] || { oreTec: 0 };
+                const g = b.giorni_disponibili || 0;
+                const svolti = cb.oreTec / 8;
+                const pct = g > 0 ? Math.min(100, Math.round(svolti / g * 100)) : 0;
+                const barColor = pct < 70 ? '#16a34a' : pct < 90 ? '#d97706' : '#dc2626';
+                return (
+                  <div key={b.id} style={{ background: '#f8fafc', borderRadius: 10, padding: '10px 14px', border: '0.5px solid #e2e8f0' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+                      <span style={{ fontFamily: 'monospace', fontSize: 12, fontWeight: 700, color: '#185FA5', background: '#eff6ff', border: '0.5px solid #bfdbfe', borderRadius: 5, padding: '2px 8px', flexShrink: 0 }}>{b.codice}</span>
+                      <span style={{ fontSize: 12, color: '#475569', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.descrizione || '—'}</span>
+                      <span style={{ fontSize: 11, fontWeight: 600, color: barColor, flexShrink: 0 }}>{pct}%</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: 12, fontSize: 11, color: '#64748b', marginBottom: 6 }}>
+                      <span>Prev: <strong style={{ color: '#0f172a' }}>{g.toFixed(1)}g</strong></span>
+                      <span>Svolti: <strong style={{ color: '#185FA5' }}>{svolti.toFixed(1)}g</strong></span>
+                      <span>Residui: <strong style={{ color: barColor }}>{Math.max(0, g - svolti).toFixed(1)}g</strong></span>
+                    </div>
+                    <div style={{ height: 4, background: '#e2e8f0', borderRadius: 2, overflow: 'hidden' }}>
+                      <div style={{ width: `${pct}%`, height: '100%', background: barColor, borderRadius: 2 }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── TOAST ORDINE PIANIFICATO ── */}
+      {showOrdineToast && (
+        <div style={{ position: 'fixed', bottom: 32, left: '50%', transform: 'translateX(-50%)', zIndex: 9999, pointerEvents: 'none' }}>
+          <style>{`@keyframes slideUpFadeIn { from { opacity:0; transform:translateX(-50%) translateY(14px); } to { opacity:1; transform:translateX(-50%) translateY(0); } }`}</style>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#001d47', color: '#fff', borderRadius: 40, padding: '13px 28px', boxShadow: '0 8px 32px rgba(0,0,0,0.25)', fontSize: 14, fontWeight: 600, animation: 'slideUpFadeIn .35s ease', whiteSpace: 'nowrap' }}>
+            <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            Ordine pianificato
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

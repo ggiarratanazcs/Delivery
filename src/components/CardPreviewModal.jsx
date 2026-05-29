@@ -58,7 +58,7 @@ export function CardPreviewModal({ card, colonnaNome, onClose }) {
         }}
       >
         {/* Header */}
-        <div style={{ background: '#001d47', padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+        <div style={{ background: 'var(--brand-800)', padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.45)', marginBottom: 3, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Richiesta sviluppo</div>
             <div style={{ fontSize: '15px', fontWeight: 600, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -176,7 +176,7 @@ export function CardPreviewModal({ card, colonnaNome, onClose }) {
         {/* Footer */}
         <div style={{ padding: '10px 20px 16px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10 }}>
           <span style={{ fontSize: '12px', color: '#94a3b8', fontStyle: 'italic', marginRight: 'auto' }}>Sola visualizzazione</span>
-          <button onClick={onClose} style={{ background: '#001d47', color: '#fff', border: 'none', borderRadius: 10, padding: '8px 20px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
+          <button onClick={onClose} style={{ background: 'var(--brand-800)', color: '#fff', border: 'none', borderRadius: 10, padding: '8px 20px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
             Chiudi
           </button>
         </div>

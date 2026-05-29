@@ -19,6 +19,8 @@
   --gray-100: #f1f5f9;
   --gray-50:  #f8fafc;
 
+  --color-surface: #ffffff;
+
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 14px;
@@ -833,3 +835,435 @@ textarea:not(.form-group textarea):focus {
 @keyframes kpiBounce { 0%, 100% { transform: translateY(0); opacity: .35; } 50% { transform: translateY(3px); opacity: .8; } }
 .kpi-hint-chevron { animation: kpiBounce 1.8s ease-in-out infinite; }
 .fn-cell-grid:hover { background: #f8fafc !important; }
+/* ═══════════════════════════════════════════════════════════════
+   TEMA NOTTE OPERATIVA — sovrascrive tutti i colori hardcodati
+   Attivato quando <html data-theme="midnight">
+   ═══════════════════════════════════════════════════════════════ */
+
+[data-theme="midnight"] {
+
+  /* ── Variabili superficie extra ── */
+  --surface-2: #212840;
+  --surface-3: #2a3148;
+  --border-color: #2a3148;
+  --text-primary: #e2e8f0;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+
+  color-scheme: dark;
+}
+
+/* ── Header / Navbar ── */
+[data-theme="midnight"] header,
+[data-theme="midnight"] header > div {
+  background: #161a27 !important;
+  border-color: #2a3148 !important;
+}
+
+[data-theme="midnight"] header button,
+[data-theme="midnight"] .tab-menu button {
+  color: #94a3b8 !important;
+}
+
+[data-theme="midnight"] .tab-menu button.active,
+[data-theme="midnight"] .tab-menu button:hover {
+  color: #93c5fd !important;
+  border-bottom-color: #93c5fd !important;
+}
+
+/* ── Toolbar ── */
+[data-theme="midnight"] .toolbar {
+  background: #1c2030 !important;
+  border-color: #2a3148 !important;
+}
+
+[data-theme="midnight"] .folder-tabs,
+[data-theme="midnight"] .sub-view-tabs {
+  background: #161a27 !important;
+}
+
+[data-theme="midnight"] .folder-tabs button,
+[data-theme="midnight"] .sub-view-tabs button {
+  color: #94a3b8 !important;
+}
+
+[data-theme="midnight"] .folder-tabs button.active,
+[data-theme="midnight"] .sub-view-tabs button.active {
+  background: #2a3148 !important;
+  color: #93c5fd !important;
+  box-shadow: none !important;
+}
+
+/* ── Tables ── */
+[data-theme="midnight"] table {
+  background: #1c2030 !important;
+  border-color: #2a3148 !important;
+}
+
+[data-theme="midnight"] th {
+  background: #161a27 !important;
+  color: #64748b !important;
+  border-color: #2a3148 !important;
+}
+
+[data-theme="midnight"] td {
+  border-color: #2a3148 !important;
+  color: #cbd5e1 !important;
+}
+
+[data-theme="midnight"] .sticky-col,
+[data-theme="midnight"] .sticky-col-2 {
+  background: #1c2030 !important;
+  border-color: #2a3148 !important;
+}
+
+[data-theme="midnight"] .row-client {
+  background: #161a27 !important;
+}
+[data-theme="midnight"] .row-client:hover {
+  background: #1e2538 !important;
+}
+[data-theme="midnight"] .row-commessa {
+  background: #1c2030 !important;
+}
+[data-theme="midnight"] .row-commessa:hover {
+  background: #212840 !important;
+}
+[data-theme="midnight"] .row-staff {
+  background: #1c2030 !important;
+}
+
+/* ── Modals ── */
+[data-theme="midnight"] .modal-content {
+  background: #1c2030 !important;
+  color: #e2e8f0 !important;
+}
+
+[data-theme="midnight"] .modal-header h3 {
+  color: #93c5fd !important;
+}
+
+[data-theme="midnight"] .modal-actions {
+  border-color: #2a3148 !important;
+}
+
+[data-theme="midnight"] .modal-overlay {
+  background: rgba(0, 0, 0, 0.75) !important;
+}
+
+/* ── Form inputs ── */
+[data-theme="midnight"] .form-group input,
+[data-theme="midnight"] .form-group select,
+[data-theme="midnight"] .form-group textarea {
+  color: #e2e8f0 !important;
+  border-bottom-color: #2a3148 !important;
+}
+
+[data-theme="midnight"] .form-group label,
+[data-theme="midnight"] .label-title {
+  color: #64748b !important;
+}
+
+[data-theme="midnight"] .form-group input::placeholder,
+[data-theme="midnight"] .form-group textarea::placeholder {
+  color: #475569 !important;
+}
+
+[data-theme="midnight"] input:not(.form-group input),
+[data-theme="midnight"] select:not(.form-group select),
+[data-theme="midnight"] textarea:not(.form-group textarea) {
+  background: #212840 !important;
+  border-color: #2a3148 !important;
+  color: #e2e8f0 !important;
+}
+
+/* ── Sidebar ── */
+[data-theme="midnight"] .sidebar-content {
+  background: #161a27 !important;
+  border-color: #2a3148 !important;
+}
+
+[data-theme="midnight"] .sidebar-header {
+  border-color: #2a3148 !important;
+}
+
+[data-theme="midnight"] .sidebar-header h3 {
+  color: #93c5fd !important;
+}
+
+[data-theme="midnight"] .sidebar-item {
+  color: #94a3b8 !important;
+}
+
+[data-theme="midnight"] .sidebar-item:hover {
+  background: #1e2538 !important;
+  color: #93c5fd !important;
+}
+
+/* ── Buttons ── */
+[data-theme="midnight"] .btn-cancel {
+  background: #2a3148 !important;
+  color: #94a3b8 !important;
+}
+
+[data-theme="midnight"] .btn-cancel:hover {
+  background: #334155 !important;
+  color: #e2e8f0 !important;
+}
+
+[data-theme="midnight"] .btn-close-circle:hover {
+  background: #2a3148 !important;
+  color: #e2e8f0 !important;
+}
+
+[data-theme="midnight"] .menu-trigger-inline:hover {
+  background: #2a3148 !important;
+}
+
+/* ── Team chips ── */
+[data-theme="midnight"] .team-chip {
+  background: #212840 !important;
+  border-color: #2a3148 !important;
+  color: #cbd5e1 !important;
+}
+
+[data-theme="midnight"] .team-chip.active {
+  background: #1e3a5f !important;
+  border-color: #60a5fa !important;
+  color: #93c5fd !important;
+}
+
+/* ── Search input ── */
+[data-theme="midnight"] .search-input {
+  background: #212840 !important;
+  border-color: #2a3148 !important;
+  color: #e2e8f0 !important;
+}
+
+[data-theme="midnight"] .search-input:focus {
+  background: #2a3148 !important;
+  border-color: #60a5fa !important;
+}
+
+/* ── Staff manage ── */
+[data-theme="midnight"] .staff-manage-row {
+  border-color: #2a3148 !important;
+  color: #cbd5e1 !important;
+}
+
+/* ── Skill cell ── */
+[data-theme="midnight"] .skill-cell:hover {
+  filter: brightness(1.2) !important;
+}
+
+/* ── Inline elements ── */
+[data-theme="midnight"] .clickable-commessa {
+  color: #94a3b8 !important;
+}
+
+[data-theme="midnight"] .clickable-commessa:hover {
+  color: #93c5fd !important;
+}
+
+/* ── React inline styles: surfaces bianche hardcodate ── */
+/* Questi selettori catturano i div con background #fff inline */
+[data-theme="midnight"] [style*="background: #fff"],
+[data-theme="midnight"] [style*="background: rgb(255, 255, 255)"],
+[data-theme="midnight"] [style*="background-color: #fff"],
+[data-theme="midnight"] [style*="background-color: rgb(255, 255, 255)"],
+[data-theme="midnight"] [style*="background:#fff"] {
+  background: #1c2030 !important;
+}
+
+[data-theme="midnight"] [style*="background: #f8fafc"],
+[data-theme="midnight"] [style*="background: rgb(248, 250, 252)"],
+[data-theme="midnight"] [style*="background:#f8fafc"] {
+  background: #161a27 !important;
+}
+
+[data-theme="midnight"] [style*="background: #f1f5f9"],
+[data-theme="midnight"] [style*="background:#f1f5f9"] {
+  background: #1e2538 !important;
+}
+
+/* ── Testi scuri hardcodati ── */
+[data-theme="midnight"] [style*="color: #0f172a"],
+[data-theme="midnight"] [style*="color: rgb(15, 23, 42)"],
+[data-theme="midnight"] [style*="color:#0f172a"] {
+  color: #e2e8f0 !important;
+}
+
+[data-theme="midnight"] [style*="color: #1e293b"],
+[data-theme="midnight"] [style*="color:#1e293b"] {
+  color: #cbd5e1 !important;
+}
+
+/* ── Bordi chiari hardcodati ── */
+[data-theme="midnight"] [style*="border: 1px solid #e2e8f0"],
+[data-theme="midnight"] [style*="border: 0.5px solid #e2e8f0"],
+[data-theme="midnight"] [style*="border-color: #e2e8f0"] {
+  border-color: #2a3148 !important;
+}
+
+/* ── Card/pannelli bianchi nei componenti JSX ── */
+[data-theme="midnight"] [style*="background: white"],
+[data-theme="midnight"] [style*="background:white"],
+[data-theme="midnight"] [style*="backgroundColor: '#fff'"] {
+  background: #1c2030 !important;
+}
+
+/* ── Date input ── */
+[data-theme="midnight"] input[type="date"] {
+  color-scheme: dark !important;
+  color: #e2e8f0 !important;
+}
+
+/* ── Scrollbar ── */
+[data-theme="midnight"] ::-webkit-scrollbar-track {
+  background: #161a27;
+}
+[data-theme="midnight"] ::-webkit-scrollbar-thumb {
+  background: #2a3148;
+  border-radius: 4px;
+}
+[data-theme="midnight"] ::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TEMA NOTTE — OVERRIDE TOTALE v2
+   Copre tutti i colori hardcodati nei componenti React inline
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Superfici bianche generiche ── */
+[data-theme="midnight"] div[style*="background: rgb(255, 255, 255)"],
+[data-theme="midnight"] div[style*="background: #fff"],
+[data-theme="midnight"] div[style*="background-color: #fff"],
+[data-theme="midnight"] div[style*="background-color: rgb(255, 255, 255)"],
+[data-theme="midnight"] div[style*="background: white"] { background: #1c2030 !important; color: #e2e8f0 !important; }
+
+[data-theme="midnight"] div[style*="background: #f8fafc"],
+[data-theme="midnight"] div[style*="background: rgb(248, 250, 252)"],
+[data-theme="midnight"] div[style*="background: #f8fafc"] { background: #111318 !important; }
+
+[data-theme="midnight"] div[style*="background: #f1f5f9"],
+[data-theme="midnight"] div[style*="background: rgb(241, 245, 249)"] { background: #161a27 !important; }
+
+[data-theme="midnight"] div[style*="background: #f0f7ff"],
+[data-theme="midnight"] div[style*="background: rgb(240, 247, 255)"] { background: #172035 !important; }
+
+/* ── Testi scuri ── */
+[data-theme="midnight"] *[style*="color: #0f172a"],
+[data-theme="midnight"] *[style*="color: rgb(15, 23, 42)"] { color: #e2e8f0 !important; }
+[data-theme="midnight"] *[style*="color: #1e293b"],
+[data-theme="midnight"] *[style*="color: rgb(30, 41, 59)"] { color: #cbd5e1 !important; }
+[data-theme="midnight"] *[style*="color: #334155"],
+[data-theme="midnight"] *[style*="color: rgb(51, 65, 85)"] { color: #94a3b8 !important; }
+[data-theme="midnight"] *[style*="color: #475569"],
+[data-theme="midnight"] *[style*="color: rgb(71, 85, 105)"] { color: #94a3b8 !important; }
+[data-theme="midnight"] *[style*="color: #001d47"],
+[data-theme="midnight"] *[style*="color: rgb(0, 29, 71)"] { color: #93c5fd !important; }
+
+/* ── Bordi chiari ── */
+[data-theme="midnight"] *[style*="border-bottom: 1px solid #e2e8f0"],
+[data-theme="midnight"] *[style*="border-bottom: 0.5px solid #e2e8f0"],
+[data-theme="midnight"] *[style*="border: 1px solid #e2e8f0"],
+[data-theme="midnight"] *[style*="border: 0.5px solid #e2e8f0"],
+[data-theme="midnight"] *[style*="borderBottom: '1px solid #e2e8f0'"] { border-color: #2a3148 !important; }
+
+/* ── Header nav hardcodato ── */
+[data-theme="midnight"] header { background: #161a27 !important; }
+[data-theme="midnight"] header * { border-color: #2a3148 !important; }
+
+/* ── Modal content specifici ── */
+[data-theme="midnight"] .modal-content,
+[data-theme="midnight"] .modal-content * { 
+  --bg-white: #1c2030;
+}
+
+/* NovitaProdottoView */
+[data-theme="midnight"] tr[style*="background: #fff"]:hover,
+[data-theme="midnight"] tr { background: #1c2030 !important; }
+[data-theme="midnight"] tr:hover { background: #212840 !important; }
+[data-theme="midnight"] thead tr { background: #161a27 !important; }
+
+/* ── Toolbar toolbar ── */
+[data-theme="midnight"] div[style*="background: #fff"][style*="border-bottom"],
+[data-theme="midnight"] div[style*="background: #ffffff"][style*="border-bottom"] {
+  background: #1c2030 !important;
+  border-color: #2a3148 !important;
+}
+
+/* ── Pianificazione: celle input ── */
+[data-theme="midnight"] .cell-input {
+  color: #e2e8f0 !important;
+  background: transparent !important;
+}
+[data-theme="midnight"] .cell-input:focus {
+  background: #1e3a5f !important;
+  border-color: #60a5fa !important;
+}
+
+/* ── Kanban / TodoView ── */
+[data-theme="midnight"] [style*="background: #0d1117"],
+[data-theme="midnight"] [style*="background: #161b22"],
+[data-theme="midnight"] [style*="background: #13191f"] { background: #111318 !important; }
+
+/* Colonne kanban */
+[data-theme="midnight"] [style*="background: #1a1f2e"],
+[data-theme="midnight"] [style*="background: #1e2433"] { background: #161a27 !important; }
+
+/* Card kanban */
+[data-theme="midnight"] [style*="background: #252d3d"],
+[data-theme="midnight"] [style*="background: #2a3147"] { background: #1c2030 !important; }
+
+/* ── ProgettiView ── */
+/* Banner header progetto già gestito via var(--brand-800) */
+/* Tab interne del progetto */
+[data-theme="midnight"] [style*="background: #fff"][style*="border-radius"][style*="padding"] {
+  background: #1c2030 !important;
+}
+
+/* KPI cards progetto */
+[data-theme="midnight"] [style*="background: #ffffff"][style*="border-radius: '12px'"],
+[data-theme="midnight"] [style*="background: #ffffff"][style*="borderRadius: 12"] {
+  background: #1c2030 !important;
+}
+
+/* ── Dropdown menu utente ── */
+[data-theme="midnight"] [style*="background: 'white'"],
+[data-theme="midnight"] [style*="background: '#ffffff'"],
+[data-theme="midnight"] div[style*="boxShadow"][style*="borderRadius"][style*="background: #fff"] {
+  background: #1c2030 !important;
+  border-color: #2a3148 !important;
+  color: #e2e8f0 !important;
+}
+
+/* ── Select options ── */
+[data-theme="midnight"] select option {
+  background: #1c2030 !important;
+  color: #e2e8f0 !important;
+}
+
+/* ── Scrollable areas ── */
+[data-theme="midnight"] [style*="overflow: auto"],
+[data-theme="midnight"] [style*="overflow: hidden"],
+[data-theme="midnight"] [style*="overflow-y: auto"] {
+  scrollbar-color: #2a3148 #111318;
+}
+
+/* ── Separatori ── */
+[data-theme="midnight"] hr,
+[data-theme="midnight"] [style*="background: #e2e8f0"][style*="height: 1px"],
+[data-theme="midnight"] [style*="background: #f1f5f9"][style*="height: 1px"] {
+  background: #2a3148 !important;
+}
+
+/* ── Badge e pill in chiaro ── */
+[data-theme="midnight"] [style*="background: #f0fdf4"] { background: #052e16 !important; }
+[data-theme="midnight"] [style*="background: #fef9c3"] { background: #2d1f00 !important; }
+[data-theme="midnight"] [style*="background: #fef2f2"] { background: #2d0b0b !important; }
+[data-theme="midnight"] [style*="background: #fffbeb"] { background: #2d1a00 !important; }
+[data-theme="midnight"] [style*="background: #e6f1fb"],
+[data-theme="midnight"] [style*="background: #eff6ff"] { background: #0f2744 !important; }
+[data-theme="midnight"] [style*="background: #eaf3de"] { background: #0a1f0a !important; }

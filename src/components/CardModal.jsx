@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../supabase.js';
 import { PRIORITA_COLORS } from '../constants.js';
 import { staffKey, staffLabel } from '../utils.js';
+import { RaccoltaRequisitiModal } from './RaccoltaRequisitiModal.jsx';
+import { SchedaDemoModal } from './SchedaDemoModal.jsx';
 
 // ── DatePicker inline ─────────────────────────────────────────
 const MESI = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
@@ -27,7 +29,7 @@ function DatePicker({ value, onChange, placeholder = 'gg/mm/aaaa', disabled = fa
   return (
     <div ref={ref} style={{ position: 'relative' }}>
       <div onClick={() => !disabled && setOpen(v => !v)}
-        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: `1.5px solid ${open ? '#0d4d8a' : '#e2e8f0'}`, padding: '6px 2px 8px', cursor: disabled ? 'default' : 'pointer', minHeight: 34 }}>
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: `1.5px solid ${open ? 'var(--brand-700)' : '#e2e8f0'}`, padding: '6px 2px 8px', cursor: disabled ? 'default' : 'pointer', minHeight: 34 }}>
         <span style={{ fontSize: '13px', color: disp ? '#1e293b' : '#94a3b8', fontStyle: disp ? 'normal' : 'italic', flex: 1 }}>{disp || placeholder}</span>
         {!disabled && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>}
         {disp && !disabled && <svg onClick={e => { e.stopPropagation(); onChange(''); }} width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginLeft: 4, cursor: 'pointer' }}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>}
@@ -46,11 +48,11 @@ function DatePicker({ value, onChange, placeholder = 'gg/mm/aaaa', disabled = fa
             {cells.map((day, i) => {
               if (!day) return <div key={i} />;
               const td = new Date(vy, vm, day); const isSel = parsed && td.getTime() === parsed.getTime(); const isT = td.getTime() === today.getTime();
-              return <div key={i} onClick={() => sel(day)} style={{ textAlign: 'center', padding: '5px 0', borderRadius: 6, fontSize: '12px', cursor: 'pointer', background: isSel ? '#001d47' : isT ? '#eff6ff' : 'transparent', color: isSel ? '#fff' : isT ? '#0d4d8a' : '#1e293b', fontWeight: isSel || isT ? 600 : 400, border: isT && !isSel ? '1px solid #bfdbfe' : '1px solid transparent' }} onMouseOver={e => { if (!isSel) e.currentTarget.style.background = '#f1f5f9'; }} onMouseOut={e => { if (!isSel) e.currentTarget.style.background = isT ? '#eff6ff' : 'transparent'; }}>{day}</div>;
+              return <div key={i} onClick={() => sel(day)} style={{ textAlign: 'center', padding: '5px 0', borderRadius: 6, fontSize: '12px', cursor: 'pointer', background: isSel ? 'var(--brand-800)' : isT ? '#eff6ff' : 'transparent', color: isSel ? '#fff' : isT ? 'var(--brand-700)' : '#1e293b', fontWeight: isSel || isT ? 600 : 400, border: isT && !isSel ? '1px solid #bfdbfe' : '1px solid transparent' }} onMouseOver={e => { if (!isSel) e.currentTarget.style.background = '#f1f5f9'; }} onMouseOut={e => { if (!isSel) e.currentTarget.style.background = isT ? '#eff6ff' : 'transparent'; }}>{day}</div>;
             })}
           </div>
           <div style={{ borderTop: '0.5px solid #f1f5f9', marginTop: 10, paddingTop: 8, textAlign: 'center' }}>
-            <button onClick={() => { const t = today; onChange(`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`); setOpen(false); }} style={{ background: 'none', border: 'none', fontSize: '12px', color: '#0d4d8a', cursor: 'pointer', fontWeight: 500 }}>Oggi</button>
+            <button onClick={() => { const t = today; onChange(`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`); setOpen(false); }} style={{ background: 'none', border: 'none', fontSize: '12px', color: 'var(--brand-700)', cursor: 'pointer', fontWeight: 500 }}>Oggi</button>
           </div>
         </div>
       )}
@@ -72,7 +74,7 @@ function SelectDropdown({ options = [], value, onChange, placeholder = 'Scegli..
   return (
     <div ref={ref} style={{ position: 'relative', minWidth: 0 }}>
       <div onClick={() => !disabled && setOpen(v => !v)}
-        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: `1.5px solid ${open ? '#0d4d8a' : '#e2e8f0'}`, padding: '6px 2px 8px', cursor: disabled ? 'default' : 'pointer', minHeight: 34, background: 'transparent', minWidth: 0 }}>
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: `1.5px solid ${open ? 'var(--brand-700)' : '#e2e8f0'}`, padding: '6px 2px 8px', cursor: disabled ? 'default' : 'pointer', minHeight: 34, background: 'transparent', minWidth: 0 }}>
         <span style={{ fontSize: '13px', color: selLabel ? '#1e293b' : '#94a3b8', fontStyle: selLabel ? 'normal' : 'italic', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selLabel || placeholder}</span>
         {!disabled && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.18s' }}><polyline points="6 9 12 15 18 9"/></svg>}
       </div>
@@ -85,7 +87,7 @@ function SelectDropdown({ options = [], value, onChange, placeholder = 'Scegli..
           <div style={{ maxHeight: 220, overflowY: 'auto' }}>
             {filtered.map((o, i) => { const val = o.value ?? o; const label = o.label ?? o; const isSel = val === value; return (
               <div key={i} onClick={() => { onChange(val); setOpen(false); setSearch(''); }}
-                style={{ padding: '9px 14px', fontSize: '13px', cursor: 'pointer', background: isSel ? '#eff6ff' : '#fff', color: isSel ? '#001d47' : '#1e293b', fontWeight: isSel ? 500 : 400 }}
+                style={{ padding: '9px 14px', fontSize: '13px', cursor: 'pointer', background: isSel ? '#eff6ff' : '#fff', color: isSel ? 'var(--brand-800)' : '#1e293b', fontWeight: isSel ? 500 : 400 }}
                 onMouseOver={e => { if (!isSel) e.currentTarget.style.background = '#f8fafc'; }}
                 onMouseOut={e => { if (!isSel) e.currentTarget.style.background = '#fff'; }}>{label}</div>
             ); })}
@@ -109,7 +111,7 @@ function LogPanel({ attivitaId, onClose }) {
   const colors = { inserimento: '#0054a6', colonna: '#0F6E56', pianificazione: '#7c3aed', assegnazione: '#d97706', stima_ore: '#64748b', modifica: '#64748b', novita_prodotto: '#f59e0b' };
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <div style={{ background: '#001d47', borderRadius: '20px 20px 0 0', padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ background: 'var(--brand-800)', borderRadius: '20px 20px 0 0', padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
           <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', marginBottom: 2 }}>Storico attività</div>
           <div style={{ fontSize: '14px', fontWeight: 500, color: '#fff' }}>Log eventi</div>
@@ -189,7 +191,7 @@ function OsservatoriPanel({ attivitaId, currentUserKey, currentUserName, onClose
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <div style={{ background: '#001d47', borderRadius: '20px 20px 0 0', padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ background: 'var(--brand-800)', borderRadius: '20px 20px 0 0', padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
           <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.45)', marginBottom: 2 }}>Notifiche attività</div>
           <div style={{ fontSize: '14px', fontWeight: 500, color: '#fff' }}>Osservatori</div>
@@ -238,7 +240,73 @@ function OsservatoriPanel({ attivitaId, currentUserKey, currentUserName, onClose
 }
 
 // ── CardModal principale ──────────────────────────────────────
-export function CardModal({ card, colonne, defaultColId, workflowId, staff, clients, transizioni, onClose, onDelete, isAdmin = false }) {
+
+// ── Pannello prodotti demo (compatto, per Prevendita) ─────────────────────────
+const PRODOTTI_DEMO = [
+  { id: 'Teseo 6',    cat: 'ERP',       bg: '#eff6ff', border: '#B5D4F4', text: '#0C447C' },
+  { id: 'Teseo 7',    cat: 'ERP',       bg: '#eff6ff', border: '#B5D4F4', text: '#0C447C' },
+  { id: 'Teseo Plus', cat: 'ERP',       bg: '#eff6ff', border: '#B5D4F4', text: '#0C447C' },
+  { id: 'Cassiopea',  cat: 'CRM',       bg: '#f0fdf4', border: '#C0DD97', text: '#27500A' },
+  { id: 'InfoVision', cat: 'BI',        bg: '#fef3c7', border: '#FAC775', text: '#633806' },
+  { id: 'Milk',       cat: 'Verticali', bg: '#fdf2f8', border: '#F4C0D1', text: '#72243E' },
+  { id: 'Oil',        cat: 'Verticali', bg: '#fdf2f8', border: '#F4C0D1', text: '#72243E' },
+  { id: 'Bakery',     cat: 'Verticali', bg: '#fdf2f8', border: '#F4C0D1', text: '#72243E' },
+  { id: 'Wine',       cat: 'Verticali', bg: '#fdf2f8', border: '#F4C0D1', text: '#72243E' },
+  { id: 'Fashion',    cat: 'Verticali', bg: '#fdf2f8', border: '#F4C0D1', text: '#72243E' },
+  { id: 'Green',      cat: 'Verticali', bg: '#fdf2f8', border: '#F4C0D1', text: '#72243E' },
+];
+
+function ProdottiDemoPanel({ prodotti, onChange }) {
+  const [open, setOpen] = React.useState(false);
+  const toggle = (id) => onChange(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+
+  return (
+    <div style={{ border: `1.5px solid ${open ? '#bfdbfe' : '#e2e8f0'}`, borderRadius: 10, overflow: 'hidden', transition: 'border-color 0.15s' }}>
+      {/* Header */}
+      <div onClick={() => setOpen(v => !v)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 12px', cursor: 'pointer', background: open ? '#f8fafc' : '#fff', userSelect: 'none' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.07em' }}>Prodotti demo</span>
+          {prodotti.length > 0 && !open && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+              {prodotti.map(id => {
+                const p = PRODOTTI_DEMO.find(x => x.id === id);
+                return <span key={id} style={{ fontSize: 10, padding: '1px 7px', borderRadius: 20, background: p?.bg || '#eff6ff', color: p?.text || '#0C447C', border: `1px solid ${p?.border || '#bfdbfe'}`, fontWeight: 600 }}>{id}</span>;
+              })}
+            </div>
+          )}
+          {prodotti.length === 0 && !open && <span style={{ fontSize: 11, color: '#cbd5e1', fontStyle: 'italic' }}>nessuno</span>}
+        </div>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', flexShrink: 0 }}>
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </div>
+      {/* Pannello espanso — chip compatti */}
+      {open && (
+        <div style={{ padding: '8px 12px 10px', borderTop: '1px solid #f1f5f9', display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          {PRODOTTI_DEMO.map(p => {
+            const on = prodotti.includes(p.id);
+            return (
+              <div key={p.id} onClick={() => toggle(p.id)}
+                style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 20, cursor: 'pointer', border: `1.5px solid ${on ? p.border : '#e2e8f0'}`, background: on ? p.bg : '#fff', transition: 'all 0.12s', userSelect: 'none' }}>
+                {on && <span style={{ fontSize: 9, color: p.text, fontWeight: 700 }}>✓</span>}
+                <span style={{ fontSize: 12, fontWeight: on ? 600 : 400, color: on ? p.text : '#64748b' }}>{p.id}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function CardModal({ card, colonne, defaultColId, workflowId, staff, clients, transizioni, onClose, onDelete, isAdmin = false, tipo = 'sviluppo' }) {
+  // ── Documenti ────────────────────────────────
+  const [tipiDocAbilitati, setTipiDocAbilitati] = useState([]);
+  const [documenti, setDocumenti] = useState([]);
+  const [showDocMenu, setShowDocMenu] = useState(false);
+  const [showRaccoltaRequisiti, setShowRaccoltaRequisiti] = useState(false);
+  const [showSchedaDemo, setShowSchedaDemo] = useState(false);
+  const [docAperto, setDocAperto] = useState(null); // documento in visualizzazione
   const isEdit = !!card;
   const [titolo, setTitolo] = useState(card?.titolo || '');
   const [descrizione, setDescrizione] = useState(card?.descrizione || '');
@@ -246,6 +314,7 @@ export function CardModal({ card, colonne, defaultColId, workflowId, staff, clie
   const [priorita, setPriorita] = useState(card?.priorita || 'media');
   const [pm, setPm] = useState(card?.pm || '');
   const [assegnatario, setAssegnatario] = useState(card?.assegnatario || '');
+  const [assegnatari, setAssegnatari] = useState(card?.assegnatari || []);
   const [teamSviluppo, setTeamSviluppo] = useState(card?.team_sviluppo || '');
   const [assegnata, setAssegnata] = useState(card?.assegnata_a || '');
   const [dataRichiesta, setDataRichiesta] = useState(card?.data_richiesta || '');
@@ -257,6 +326,80 @@ export function CardModal({ card, colonne, defaultColId, workflowId, staff, clie
   const [showLog, setShowLog] = useState(false);
   const [showOsservatori, setShowOsservatori] = useState(false);
   const [isStarred, setIsStarred] = useState(card?.novita_prodotto || false);
+  const [prospect, setProspect] = useState(card?.prospect || '');
+  const [salesAccount, setSalesAccount] = useState(card?.sales_account || '');
+  const isPrevendita = tipo === 'prevendita';
+
+  // ── Flag completa / annulla ─────────────────────────────────
+  const isColCompletata = (nome) => /complet|done|chiusa|rilasci/i.test(nome || '');
+  const isColAnnullata  = (nome) => /annull|cancel/i.test(nome || '');
+  const colonnaCompletateId = isEdit ? (colonne.find(c => isColCompletata(c.nome))?.id || null) : null;
+  const colonnaAnnullateId  = isEdit ? (colonne.find(c => isColAnnullata(c.nome))?.id || null) : null;
+  const [flagSaving, setFlagSaving] = React.useState(false);
+  // Una card può essere completata/annullata se esiste la transizione dalla sua colonna corrente
+  const canComplete = isEdit && colonnaCompletateId && card?.colonna_id !== colonnaCompletateId &&
+    (transizioni || []).some(t => t.da_colonna_id === card?.colonna_id && t.a_colonna_id === colonnaCompletateId);
+  const canAnnulla  = isEdit && colonnaAnnullateId  && card?.colonna_id !== colonnaAnnullateId &&
+    (transizioni || []).some(t => t.da_colonna_id === card?.colonna_id && t.a_colonna_id === colonnaAnnullateId);
+  const isGiaCompletata = isEdit && colonnaCompletateId && card?.colonna_id === colonnaCompletateId;
+  const isGiaAnnullata  = isEdit && colonnaAnnullateId  && card?.colonna_id === colonnaAnnullateId;
+
+  const spostaFlag = async (aColId) => {
+    if (!aColId || flagSaving) return;
+    setFlagSaving(true);
+    await supabase.from('attivita').update({
+      colonna_id: aColId,
+      colonna_entered_at: new Date().toISOString(),
+    }).eq('id', card.id);
+    setFlagSaving(false);
+    onClose();
+  };
+
+  // ── Avanzamento a step 25% ────────────────────────────────
+  // Visibile solo nelle colonne: pianificate, in corso, test
+  const isColAvanzabile = (nome) => /pianific|in corso|test/i.test(nome || '');
+  const colonnaAttuale = isEdit ? colonne.find(c => c.id === card?.colonna_id) : null;
+  const canAvanzamento = isEdit && colonnaAttuale && isColAvanzabile(colonnaAttuale.nome) && canComplete;
+  const [avanzamento, setAvanzamento] = React.useState(card?.avanzamento || 0);
+  const [avanzSaving, setAvanzSaving] = React.useState(false);
+
+  const handleAvanzamento = async () => {
+    if (avanzSaving || !canAvanzamento) return;
+    const next = avanzamento + 25;
+    setAvanzSaving(true);
+
+    // Se siamo in "pianificate" e avanziamo al 25%, sposta in "in corso"
+    const colonnaInCorsoId = colonne.find(c => /in\s*corso/i.test(c.nome))?.id || null;
+    const isPianificate = colonnaAttuale && /pianific/i.test(colonnaAttuale.nome);
+    const spostaInCorso = next === 25 && isPianificate && colonnaInCorsoId;
+
+    if (next >= 100) {
+      // Auto-completa: sposta in completate
+      await supabase.from('attivita').update({
+        avanzamento: 100,
+        colonna_id: colonnaCompletateId,
+        colonna_entered_at: new Date().toISOString(),
+      }).eq('id', card.id);
+      await writeLog('avanzamento', 'Avanzamento 100% — attività completata automaticamente');
+      await notificaDestinatari(card.id, `"${titolo}": avanzamento 100% — attività completata`);
+    } else {
+      const updatePayload = { avanzamento: next };
+      if (spostaInCorso) {
+        updatePayload.colonna_id = colonnaInCorsoId;
+        updatePayload.colonna_entered_at = new Date().toISOString();
+      }
+      await supabase.from('attivita').update(updatePayload).eq('id', card.id);
+      const logMsg = spostaInCorso
+        ? `Avanzamento al 25% — attività spostata in "In corso"`
+        : `Avanzamento aggiornato al ${next}%`;
+      await writeLog('avanzamento', logMsg);
+      await notificaDestinatari(card.id, `"${titolo}": ${logMsg.toLowerCase()}`);
+      setAvanzamento(next);
+    }
+    setAvanzSaving(false);
+    if (next >= 100 || spostaInCorso) onClose();
+  };
+  const [prodottiDemo, setProdottiDemo] = useState(card?.prodotti_demo || []);
 
   // ── currentUser ────────────────────────────────────────────
   // IMPORTANTE: la chiave deve essere "Cognome Nome" — identico
@@ -308,13 +451,46 @@ export function CardModal({ card, colonne, defaultColId, workflowId, staff, clie
     }
   };
 
+  // Carica tipi documento abilitati per la colonna corrente + documenti esistenti
+  const colIdCurrent = card?.colonna_id || defaultColId;
+  useEffect(() => {
+    if (!colIdCurrent || !card?.id) return;
+    // Tipi abilitati per questa colonna
+    supabase.from('workflow_colonna_documenti').select('tipo,abilitato')
+      .eq('colonna_id', colIdCurrent).eq('abilitato', true)
+      .then(({ data }) => setTipiDocAbilitati((data || []).map(r => r.tipo)));
+    // Documenti già creati per questa card
+    supabase.from('card_documenti').select('*')
+      .eq('card_id', card.id).order('created_at', { ascending: false })
+      .then(({ data }) => setDocumenti(data || []));
+  }, [colIdCurrent, card?.id]);
+
+  const loadDocumenti = async () => {
+    if (!card?.id) return;
+    const { data } = await supabase.from('card_documenti').select('*')
+      .eq('card_id', card.id).order('created_at', { ascending: false });
+    setDocumenti(data || []);
+  };
+
+  const saveDocumento = async (tipo, titolo, dati) => {
+    if (!card?.id) return;
+    const { data: newDoc } = await supabase.from('card_documenti').insert({
+      card_id: card.id, tipo, titolo, dati,
+    }).select().single();
+    await loadDocumenti();
+    return newDoc;
+  };
+
+  const [staffSales, setStaffSales] = useState([]);
   useEffect(() => {
     Promise.all([
       supabase.from('config_team_prodotto').select('*').order('ordine'),
       supabase.from('staff').select('id, nome, cognome, ruolo, team_prodotto').in('ruolo', ['Programmatore', 'Analista']),
-    ]).then(([{ data: teams }, { data: devs }]) => {
+      supabase.from('staff').select('id, nome, cognome, ruolo').eq('ruolo', 'Sales Account'),
+    ]).then(([{ data: teams }, { data: devs }, { data: sales }]) => {
       setTeamConfig(teams || []);
       setStaffSviluppo(devs || []);
+      setStaffSales(sales || []);
     });
     // Carica bolle in base al contesto iniziale
     loadBolle(card?.cliente_id || clienteId, card?.commessa_id || commessaId);
@@ -337,9 +513,10 @@ export function CardModal({ card, colonne, defaultColId, workflowId, staff, clie
   });
 
   const colonnaCorrente = colonne.find(c => c.id === colId);
-  const colonnaColor = colonnaCorrente?.colore || '#001d47';
+  const colonnaColor = colonnaCorrente?.colore || 'var(--brand-800)';
 
   const pmOptions = (staff || []).filter(s => s.ruolo === 'PM' || s.is_admin);
+  const staffNoSales = (staff || []).filter(s => s.ruolo !== 'Sales Account');
   const commessaLabel = card?.commessa
     ? [clients?.find(c => c.id === card.commessa.client_id)?.nome_progetto, card.commessa.nome_commessa].filter(Boolean).join(' · ')
     : null;
@@ -417,10 +594,14 @@ export function CardModal({ card, colonne, defaultColId, workflowId, staff, clie
       titolo: titolo.trim(),
       descrizione: descrizione || null,
       priorita,
-      pm: pm || null,
-      assegnatario: assegnatario || null,
-      team_sviluppo: teamSviluppo || null,
-      assegnata_a: assegnata || null,
+      pm: isPrevendita ? null : (pm || null),
+      assegnatario: isPrevendita ? null : (assegnatario || null),
+      assegnatari: isPrevendita ? (assegnatari || []) : null,
+      team_sviluppo: isPrevendita ? null : (teamSviluppo || null),
+      assegnata_a: isPrevendita ? null : (assegnata || null),
+      prospect: isPrevendita ? (prospect || null) : null,
+      sales_account: isPrevendita ? (salesAccount || null) : null,
+      prodotti_demo: isPrevendita ? (prodottiDemo || []) : null,
       data_richiesta: dataRichiesta || null,
       bolla_id: bollaId || null,
       rif_pratica: rifPratica || null,
@@ -554,7 +735,7 @@ export function CardModal({ card, colonne, defaultColId, workflowId, staff, clie
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={e => e.stopPropagation()}
-        style={{ position: 'relative', width: '100%', maxWidth: '660px', padding: 0, borderRadius: '20px' }}>
+        style={{ position: 'relative', width: '100%', maxWidth: '660px', padding: 0, borderRadius: '20px', maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
         {/* Log panel sovrapposto */}
         {showLog && isEdit && (
@@ -576,7 +757,7 @@ export function CardModal({ card, colonne, defaultColId, workflowId, staff, clie
         <div style={{ height: 4, background: colonnaColor, borderRadius: '20px 20px 0 0' }} />
 
         {/* Header navy */}
-        <div style={{ background: '#001d47', padding: '12px 16px 14px' }}>
+        <div style={{ background: 'var(--brand-800)', padding: '12px 16px 14px' }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
             <div style={{ flex: 1 }}>
               {commessaLabel && (
@@ -587,30 +768,230 @@ export function CardModal({ card, colonne, defaultColId, workflowId, staff, clie
             </div>
             <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
               {isEdit && (<>
-                {/* Stellina — visibile a tutti, cliccabile solo admin */}
-                <button onClick={toggleStar}
+                {/* Stellina — nascosta per prevendita */}
+                {!isPrevendita && <button onClick={toggleStar}
                   title={isAdmin ? (isStarred ? 'Rimuovi da novità prodotto' : 'Segnala come novità prodotto') : (isStarred ? 'Novità di prodotto' : 'Non segnalata come novità')}
                   style={{ background: isStarred ? 'rgba(250,199,117,0.25)' : 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 6, width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: isAdmin ? 'pointer' : 'default', color: isStarred ? '#FAC775' : 'rgba(255,255,255,0.5)' }}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill={isStarred ? '#FAC775' : 'none'} stroke={isStarred ? '#FAC775' : 'currentColor'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
                   </svg>
-                </button>
-                <button onClick={() => { setShowOsservatori(true); setShowLog(false); }} title="Osservatori"
+                </button>}
+                {/* Osservatori — nascosto per prevendita */}
+                {!isPrevendita && <button onClick={() => { setShowOsservatori(true); setShowLog(false); }} title="Osservatori"
                   style={{ background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 6, width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff' }}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                </button>
+                </button>}
                 <button onClick={() => { setShowLog(true); setShowOsservatori(false); }} title="Storico attività"
                   style={{ background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 6, width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff' }}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                 </button>
+                {/* Icona documenti — visibile solo se ci sono tipi abilitati */}
+                {(tipiDocAbilitati.length > 0 || documenti.length > 0) && (
+                  <div style={{ position: 'relative' }}>
+                    <button onClick={() => setShowDocMenu(v => !v)} title="Documenti"
+                      style={{ background: documenti.length > 0 ? 'rgba(250,199,117,0.25)' : 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 6, width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: documenti.length > 0 ? '#FAC775' : '#fff', position: 'relative' }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+                        <line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/>
+                      </svg>
+                      {documenti.length > 0 && (
+                        <span style={{ position: 'absolute', top: -4, right: -4, width: 14, height: 14, borderRadius: '50%', background: '#FAC775', color: '#001d47', fontSize: 8, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>
+                          {documenti.length}
+                        </span>
+                      )}
+                    </button>
+                    {showDocMenu && (
+                      <div style={{ position: 'absolute', top: 'calc(100% + 6px)', right: 0, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, boxShadow: '0 12px 40px rgba(0,18,41,0.18)', zIndex: 300, minWidth: 260, overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
+
+                        {/* Sezione NUOVO — sfondo colorato, icona + prominente */}
+                        {tipiDocAbilitati.length > 0 && (
+                          <div style={{ background: 'var(--brand-800)', padding: '8px 10px' }}>
+                            <div style={{ fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase', letterSpacing: '0.08em', padding: '2px 4px 6px' }}>Crea nuovo</div>
+
+                            {tipiDocAbilitati.includes('raccolta_requisiti') && (
+                              <div onClick={() => { setShowDocMenu(false); setShowRaccoltaRequisiti(true); }}
+                                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 8px', borderRadius: 9, cursor: 'pointer', transition: 'background 0.12s' }}
+                                onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.12)'}
+                                onMouseOut={e => e.currentTarget.style.background = 'transparent'}>
+                                {/* Icona documento con + */}
+                                <div style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, position: 'relative' }}>
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
+                                    <rect x="9" y="3" width="6" height="4" rx="1"/>
+                                    <line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/>
+                                    <polyline points="9 9 10 10 12 8"/>
+                                  </svg>
+                                  <div style={{ position: 'absolute', bottom: -3, right: -3, width: 13, height: 13, borderRadius: '50%', background: '#4ade80', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                  </div>
+                                </div>
+                                <div>
+                                  <div style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>Raccolta Requisiti</div>
+                                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)' }}>Specifica funzionale strutturata</div>
+                                </div>
+                              </div>
+                            )}
+
+                            {tipiDocAbilitati.includes('scheda_demo') && (
+                              <div onClick={() => { setShowDocMenu(false); setShowSchedaDemo(true); }}
+                                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 8px', borderRadius: 9, cursor: 'pointer', transition: 'background 0.12s' }}
+                                onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.12)'}
+                                onMouseOut={e => e.currentTarget.style.background = 'transparent'}>
+                                <div style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, position: 'relative' }}>
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                                    <rect x="2" y="3" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/>
+                                    <polyline points="6 9 9 12 13 8 16 11"/>
+                                  </svg>
+                                  <div style={{ position: 'absolute', bottom: -3, right: -3, width: 13, height: 13, borderRadius: '50%', background: '#4ade80', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                  </div>
+                                </div>
+                                <div>
+                                  <div style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>Scheda Demo</div>
+                                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)' }}>Preparazione demo cliente</div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Sezione documenti esistenti — sfondo bianco neutro, icona occhio */}
+                        {documenti.length > 0 && (
+                          <div style={{ padding: '8px 10px 10px' }}>
+                            <div style={{ fontSize: 9, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', padding: '2px 4px 6px' }}>Consulta documento</div>
+                            {documenti.map(doc => {
+                              const dt = new Date(doc.created_at).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: '2-digit' });
+                              const isRR = doc.tipo === 'raccolta_requisiti';
+                              return (
+                                <div key={doc.id}
+                                  onClick={() => { setShowDocMenu(false); setDocAperto(doc); }}
+                                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 8px', borderRadius: 9, cursor: 'pointer', border: '1px solid transparent', transition: 'all 0.12s' }}
+                                  onMouseOver={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
+                                  onMouseOut={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'transparent'; }}>
+                                  {/* Icona tipo documento */}
+                                  <div style={{ width: 32, height: 32, borderRadius: 8, background: isRR ? '#eff6ff' : '#f0fdf4', border: `1px solid ${isRR ? '#bfdbfe' : '#bbf7d0'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                    {isRR
+                                      ? <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/><polyline points="9 9 10 10 12 8"/></svg>
+                                      : <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/><polyline points="6 9 9 12 13 8 16 11"/></svg>
+                                    }
+                                  </div>
+                                  <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ fontSize: 12, fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{doc.titolo}</div>
+                                    <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 1 }}>{isRR ? 'Raccolta Requisiti' : 'Scheda Demo'} · {dt}</div>
+                                  </div>
+                                  {/* Icona occhio per "visualizza" */}
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+                                  </svg>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </>)}
               <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 6, width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff', fontSize: 16 }}>×</button>
             </div>
           </div>
+          {/* ── Flag completa / annulla — solo icone, sotto le icone header ── */}
+          {isEdit && (canComplete || canAnnulla || isGiaCompletata || isGiaAnnullata) && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 10, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,0.1)', justifyContent: 'flex-end' }}>
+              {isGiaCompletata && (
+                <div title="Completata" style={{ width: 28, height: 28, borderRadius: 6, background: 'rgba(22,163,74,0.2)', border: '1px solid rgba(74,222,128,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                </div>
+              )}
+              {isGiaAnnullata && (
+                <div title="Annullata" style={{ width: 28, height: 28, borderRadius: 6, background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </div>
+              )}
+              {canComplete && (
+                <button disabled={flagSaving} onClick={() => spostaFlag(colonnaCompletateId)} title="Segna come completata"
+                  style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid rgba(74,222,128,0.4)', background: 'rgba(22,163,74,0.12)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s', opacity: flagSaving ? 0.5 : 1 }}
+                  onMouseOver={e => { e.currentTarget.style.background = 'rgba(22,163,74,0.25)'; e.currentTarget.style.borderColor = 'rgba(74,222,128,0.7)'; }}
+                  onMouseOut={e => { e.currentTarget.style.background = 'rgba(22,163,74,0.12)'; e.currentTarget.style.borderColor = 'rgba(74,222,128,0.4)'; }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                </button>
+              )}
+              {canAnnulla && (
+                <button disabled={flagSaving} onClick={() => spostaFlag(colonnaAnnullateId)} title="Annulla attività"
+                  style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid rgba(239,68,68,0.35)', background: 'rgba(239,68,68,0.1)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s', opacity: flagSaving ? 0.5 : 1 }}
+                  onMouseOver={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.22)'; e.currentTarget.style.borderColor = 'rgba(239,68,68,0.6)'; }}
+                  onMouseOut={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.1)'; e.currentTarget.style.borderColor = 'rgba(239,68,68,0.35)'; }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+              )}
+              {/* Cerchio avanzamento */}
+              {canAvanzamento && (() => {
+                const R = 10;
+                const C = 2 * Math.PI * R;
+                const pct = avanzamento;
+                // dashoffset = C * 0.25 negativo per partire da ore 12 in senso orario
+                const filled = (pct / 100) * C;
+                const empty = C - filled;
+                const col = pct === 0 ? 'rgba(255,255,255,0.25)' : pct <= 50 ? '#60a5fa' : '#4ade80';
+                return (
+                  <button
+                    disabled={avanzSaving}
+                    onClick={handleAvanzamento}
+                    title={`Avanzamento ${pct}% — clicca per +25%`}
+                    style={{ width: 32, height: 32, borderRadius: 6, border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.08)', cursor: avanzSaving ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s', opacity: avanzSaving ? 0.5 : 1 }}
+                    onMouseOver={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.16)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.3)'; }}
+                    onMouseOut={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'; }}>
+                    <svg width="24" height="24" viewBox="0 0 26 26" style={{ transform: 'rotate(-90deg)' }}>
+                      {/* Track */}
+                      <circle cx="13" cy="13" r={R} fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="2.5" />
+                      {/* Arco riempito */}
+                      <circle cx="13" cy="13" r={R} fill="none"
+                        stroke={col}
+                        strokeWidth="2.5"
+                        strokeDasharray={`${filled} ${empty}`}
+                        strokeLinecap="round"
+                        style={{ transition: 'stroke-dasharray 0.4s ease, stroke 0.3s ease' }}
+                      />
+                    </svg>
+                    {pct > 0 && (
+                      <span style={{ position: 'absolute', fontSize: 7, fontWeight: 700, color: 'rgba(255,255,255,0.9)', fontFamily: 'IBM Plex Mono, monospace', lineHeight: 1 }}>{pct}</span>
+                    )}
+                  </button>
+                );
+              })()}
+              {/* Tasto indietro avanzamento */}
+              {canAvanzamento && avanzamento > 0 && (
+                <button
+                  disabled={avanzSaving}
+                  onClick={async () => {
+                    if (avanzSaving) return;
+                    const prev = Math.max(0, avanzamento - 25);
+                    setAvanzSaving(true);
+                    await supabase.from('attivita').update({ avanzamento: prev }).eq('id', card.id);
+                    await writeLog('avanzamento', `Avanzamento riportato al ${prev}%`);
+                    await notificaDestinatari(card.id, `"${titolo}": avanzamento riportato al ${prev}%`);
+                    setAvanzamento(prev);
+                    setAvanzSaving(false);
+                  }}
+                  title={`Torna a ${Math.max(0, avanzamento - 25)}%`}
+                  style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.06)', cursor: avanzSaving ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s', opacity: avanzSaving ? 0.5 : 0.7 }}
+                  onMouseOver={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.25)'; }}
+                  onMouseOut={e => { e.currentTarget.style.opacity = '0.7'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)'; }}>
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                    <path d="M3 3v5h5"/>
+                  </svg>
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
+
+
         {/* Body */}
-        <div style={{ padding: '12px 16px 0' }}>
+        <div style={{ padding: '12px 16px 0', overflowY: 'auto', flex: 1 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
 
             {fld('Descrizione',
@@ -642,20 +1023,55 @@ export function CardModal({ card, colonne, defaultColId, workflowId, staff, clie
               </div>
             )}
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              {fld('PM', <SelectDropdown options={[{ value: '', label: '— nessuno —' }, ...pmOptions.map(s => ({ value: staffKey(s), label: staffLabel(s) }))]} value={pm} onChange={setPm} placeholder="— nessuno —" />)}
-              {fld('Assegnatario', <SelectDropdown options={[{ value: '', label: '— nessuno —' }, ...(staff || []).map(s => ({ value: staffKey(s), label: staffLabel(s) }))]} value={assegnatario} onChange={setAssegnatario} placeholder="— nessuno —" />)}
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              {fld('Team sviluppo', <SelectDropdown options={[{ value: '', label: '— nessuno —' }, ...teamConfig.map(t => ({ value: t.nome, label: t.nome }))]} value={teamSviluppo} onChange={v => { setTeamSviluppo(v); setAssegnata(''); }} placeholder="— nessuno —" />)}
-              {fld('Risorsa', <SelectDropdown options={[{ value: '', label: '— nessuna —' }, ...(teamSviluppo ? staffSviluppo.filter(s => s.team_prodotto === teamSviluppo) : staffSviluppo).map(s => ({ value: `${s.cognome} ${s.nome}`, label: `${s.cognome} ${s.nome}` }))]} value={assegnata} onChange={setAssegnata} placeholder="— nessuna —" />)}
-            </div>
+            {isPrevendita ? (
+              /* ── Campi Prevendita ── */
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                {fld('Assegnatari', (
+                  <div>
+                    {/* Chip selezionati */}
+                    {assegnatari.length > 0 && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 6 }}>
+                        {assegnatari.map(key => {
+                          const s = staffNoSales.find(x => staffKey(x) === key);
+                          return (
+                            <span key={key} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 20, background: '#eff6ff', border: '1px solid #bfdbfe', fontSize: 12, color: 'var(--brand-700)', fontWeight: 500 }}>
+                              {s ? staffLabel(s) : key}
+                              <span onClick={() => setAssegnatari(p => p.filter(x => x !== key))} style={{ cursor: 'pointer', fontSize: 13, color: '#94a3b8', lineHeight: 1, marginLeft: 2 }}>×</span>
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
+                    {/* Dropdown stesso stile SelectDropdown */}
+                    <SelectDropdown
+                      options={[{ value: '', label: '+ aggiungi...' }, ...staffNoSales.filter(s => !assegnatari.includes(staffKey(s))).map(s => ({ value: staffKey(s), label: staffLabel(s) }))]}
+                      value=""
+                      onChange={v => { if (v && !assegnatari.includes(v)) setAssegnatari(p => [...p, v]); }}
+                      placeholder="+ aggiungi..."
+                    />
+                  </div>
+                ))}
+                {fld('Sales Account', <SelectDropdown options={[{ value: '', label: '— nessuno —' }, ...staffSales.map(s => ({ value: staffKey(s), label: staffLabel(s) }))]} value={salesAccount} onChange={setSalesAccount} placeholder="— nessuno —" />)}
+              </div>
+            ) : (
+              /* ── Campi Sviluppo ── */
+              <>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  {fld('PM', <SelectDropdown options={[{ value: '', label: '— nessuno —' }, ...pmOptions.map(s => ({ value: staffKey(s), label: staffLabel(s) }))]} value={pm} onChange={setPm} placeholder="— nessuno —" />)}
+                  {fld('Assegnatario', <SelectDropdown options={[{ value: '', label: '— nessuno —' }, ...(staffNoSales).map(s => ({ value: staffKey(s), label: staffLabel(s) }))]} value={assegnatario} onChange={setAssegnatario} placeholder="— nessuno —" />)}
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  {fld('Team sviluppo', <SelectDropdown options={[{ value: '', label: '— nessuno —' }, ...teamConfig.map(t => ({ value: t.nome, label: t.nome }))]} value={teamSviluppo} onChange={v => { setTeamSviluppo(v); setAssegnata(''); }} placeholder="— nessuno —" />)}
+                  {fld('Risorsa', <SelectDropdown options={[{ value: '', label: '— nessuna —' }, ...(teamSviluppo ? staffSviluppo.filter(s => s.team_prodotto === teamSviluppo) : staffSviluppo).map(s => ({ value: `${s.cognome} ${s.nome}`, label: `${s.cognome} ${s.nome}` }))]} value={assegnata} onChange={setAssegnata} placeholder="— nessuna —" />)}
+                </div>
+              </>
+            )}
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               {fld('Data richiesta', <DatePicker value={dataRichiesta} onChange={setDataRichiesta} />)}
               {fld('Cliente', <SelectDropdown options={[{ value: '', label: '— nessuno —' }, ...(clients || []).map(c => ({ value: c.id, label: c.nome_progetto }))]} value={clienteId} onChange={v => { setClienteId(v); setCommessaId(''); setBollaId(''); }} placeholder="— nessuno —" />)}
             </div>
+            {isPrevendita && fld('Prospect', <input type="text" placeholder="Nome azienda prospect..." value={prospect} onChange={e => setProspect(e.target.value)} style={{ fontFamily: 'inherit' }} />)}
 
             {clienteId && (() => {
               const client = (clients || []).find(c => c.id === clienteId);
@@ -681,23 +1097,110 @@ export function CardModal({ card, colonne, defaultColId, workflowId, staff, clie
               </div>
             )}
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: '12px' }}>
-              {fld('Bolla', <SelectDropdown options={[{ value: '', label: '— nessuna —' }, ...bolleList.map(b => ({ value: b.id, label: `${b.codice}${b.descrizione ? ' — ' + b.descrizione : ''}` }))]} value={bollaId} onChange={setBollaId} placeholder="— nessuna —" />)}
-              {fld('Rif. Pratica', <input type="text" placeholder="es. PR.26.12345" value={rifPratica} onChange={e => setRifPratica(e.target.value)} />)}
-            </div>
-
-            {fld('Stima ore', <input type="number" min="1" step="1" placeholder="es. 16" value={stimaOre} onChange={e => setStimaOre(e.target.value)} style={{ fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums' }} />)}
+            {!isPrevendita && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: '12px' }}>
+                {fld('Bolla', <SelectDropdown options={[{ value: '', label: '— nessuna —' }, ...bolleList.map(b => ({ value: b.id, label: `${b.codice}${b.descrizione ? ' — ' + b.descrizione : ''}` }))]} value={bollaId} onChange={setBollaId} placeholder="— nessuna —" />)}
+                {fld('Rif. Pratica', <input type="text" placeholder="es. PR.26.12345" value={rifPratica} onChange={e => setRifPratica(e.target.value)} />)}
+              </div>
+            )}
+            {isPrevendita && <ProdottiDemoPanel prodotti={prodottiDemo} onChange={setProdottiDemo} />}
+            {isPrevendita && fld('Rif. Pratica', <input type="text" placeholder="es. PR.26.12345" value={rifPratica} onChange={e => setRifPratica(e.target.value)} />)}
+            {!isPrevendita && fld('Stima ore', <input type="number" min="1" step="1" placeholder="es. 16" value={stimaOre} onChange={e => setStimaOre(e.target.value)} style={{ fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums' }} />)}
 
           </div>
         </div>
 
-        <div className="modal-actions" style={{ margin: '10px 16px 14px', paddingTop: 12, borderTop: '1px solid #f1f5f9' }}>
+
+
+        <div className="modal-actions" style={{ margin: '0 16px 14px', paddingTop: 12, borderTop: '1px solid #f1f5f9', flexShrink: 0 }}>
           {isEdit && <button onClick={onDelete} style={{ background: 'none', border: '1px solid #fecaca', color: '#dc2626', borderRadius: 10, padding: '8px 16px', cursor: 'pointer', fontSize: 13, marginRight: 'auto' }}>Elimina</button>}
           <button className="btn-cancel" onClick={onClose}>Annulla</button>
           <button className="btn-save" onClick={handleSave} disabled={saving}>{saving ? 'Salvataggio...' : 'Salva'}</button>
         </div>
+
+        {/* Visualizza Scheda Demo esistente in readOnly */}
+        {docAperto && docAperto.tipo === 'scheda_demo' && (() => {
+          const dati = typeof docAperto.dati === 'string' ? JSON.parse(docAperto.dati) : (docAperto.dati || {});
+          return (
+            <SchedaDemoModal
+              readOnly={true}
+              initialData={dati}
+              staff={staff}
+              onClose={async (datiModificati) => {
+                if (datiModificati) {
+                  await supabase.from('card_documenti').update({
+                    titolo: datiModificati.titolo || docAperto.titolo,
+                    dati: datiModificati,
+                  }).eq('id', docAperto.id);
+                  await loadDocumenti();
+                }
+                setDocAperto(null);
+              }}
+              preData={{}}
+            />
+          );
+        })()}
+
+        {/* Modale Raccolta Requisiti da card */}
+        {showRaccoltaRequisiti && (
+          <RaccoltaRequisitiModal
+            onClose={async (datiSalvati) => {
+              setShowRaccoltaRequisiti(false);
+              if (datiSalvati && card?.id) {
+                await saveDocumento('raccolta_requisiti', datiSalvati.titolo || 'Raccolta Requisiti', datiSalvati);
+              }
+            }}
+            staff={staff}
+            clients={clients}
+            preData={{
+              cliente: (() => {
+                const cliId = card?.cliente_id || clienteId;
+                return cliId ? (clients?.find(c => c.id === cliId)?.nome_progetto || '') : '';
+              })(),
+              titolo: card?.titolo || '',
+            }}
+          />
+        )}
+
+        {/* Modale Scheda Demo da card */}
+        {showSchedaDemo && (
+          <SchedaDemoModal
+            onClose={async (datiSalvati) => {
+              setShowSchedaDemo(false);
+              if (datiSalvati && card?.id) {
+                await saveDocumento('scheda_demo', datiSalvati.titolo || 'Scheda Demo', datiSalvati);
+              }
+            }}
+            staff={staff}
+            preData={{}}
+          />
+        )}
+
+        {/* Visualizza documento esistente con RaccoltaRequisitiModal in readOnly */}
+        {docAperto && docAperto.tipo === 'raccolta_requisiti' && (() => {
+          const dati = typeof docAperto.dati === 'string' ? JSON.parse(docAperto.dati) : (docAperto.dati || {});
+          return (
+            <RaccoltaRequisitiModal
+              readOnly={true}
+              initialData={dati}
+              onClose={async (datiModificati) => {
+                if (datiModificati) {
+                  // Salva le modifiche sul documento esistente
+                  await supabase.from('card_documenti').update({
+                    titolo: datiModificati.titolo || docAperto.titolo,
+                    dati: datiModificati,
+                  }).eq('id', docAperto.id);
+                  await loadDocumenti();
+                }
+                setDocAperto(null);
+              }}
+              staff={staff}
+              clients={clients}
+              preData={{}}
+            />
+          );
+        })()}
       </div>
     </div>
   );
 }
-

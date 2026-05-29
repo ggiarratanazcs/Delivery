@@ -16,14 +16,48 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 
     <title>ZCS | Delivery Hub</title>
+
+    <!-- ── Intercetta token cliente PRIMA di React ── -->
+    <script>
+      (function() {
+        var token = new URLSearchParams(window.location.search).get('token');
+        if (token) {
+          // Blocca il caricamento dell'app React sostituendo il contenuto
+          document.addEventListener('DOMContentLoaded', function() {
+            var root = document.getElementById('root');
+            if (root) {
+              root.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:sans-serif;color:#94a3b8;">Caricamento vista cliente…</div>';
+            }
+          });
+          // Carica il modulo cliente invece dell'app
+          window.__CLIENTE_TOKEN__ = token;
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
-    <script type="module" src="/src/index.js"></script>
+    <script type="module">
+      // Se c'è un token cliente, carica ClienteStandalone invece dell'app
+      if (window.__CLIENTE_TOKEN__) {
+        const { ClienteStandalone } = await import('/src/components/ClienteStandalone.jsx');
+        const { createRoot } = await import('react-dom/client');
+        const React = await import('react');
+        const root = createRoot(document.getElementById('root'));
+        root.render(React.default.createElement(ClienteStandalone, { token: window.__CLIENTE_TOKEN__ }));
+      } else {
+        // App normale
+        await import('/src/index.js');
+      }
+    </script>
 
     <!-- Registrazione Service Worker -->
     <script>
+      // Disregistra eventuali service worker che potrebbero servire pagine in cache
       if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(regs => {
+          regs.forEach(reg => reg.unregister());
+        });
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('/sw.js')
             .then(reg => console.log('SW registrato:', reg.scope))
