@@ -11,6 +11,9 @@ import { useIsMobile, DesktopOnly } from './DesktopOnly.jsx';
 import { BolleCommessa } from './KPIView.jsx';
 import { CardPreviewModal } from './CardPreviewModal.jsx';
 import { RelazioneProgettoPDF } from './RelazioneProgettoPDF.jsx';
+import { MappaView } from './MappaView.jsx';
+import { ClienteLinkModal } from './ClienteLinkModal.jsx';
+import { Avatar } from './Avatar.jsx';
 
 export async function creaTaskStandard(progettoId) {
   const tasks = [];
@@ -68,12 +71,17 @@ function SelectDropdown({ options = [], value, onChange, placeholder = 'Scegli..
   );
 }
 
-export function ProgettiList({ clients, staff, currentUser, onOpenProgetto }) {
+export function ProgettiList({ clients, staff, currentUser, onOpenProgetto, onOpenCommessa }) {
   const [progetti, setProgetti] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [soloAttive, setSoloAttive] = useState(true);
+  const [lensOpen, setLensOpen] = useState(false);
+  const lensRef = React.useRef(null);
   const isMobile = useIsMobile();
 
+  useEffect(() => { if (lensOpen && lensRef.current) lensRef.current.focus(); }, [lensOpen]);
+  useEffect(() => { if (search) setLensOpen(true); }, [search]);
   useEffect(() => { loadProgetti(); }, []);
 
   const loadProgetti = async () => {
@@ -83,102 +91,249 @@ export function ProgettiList({ clients, staff, currentUser, onOpenProgetto }) {
     setLoading(false);
   };
 
-  const progettiArricchiti = progetti.map(p => {
-    const allComm = clients.flatMap(c => c.commesse.map(co => ({ ...co, clientName: c.nome_progetto })));
-    const commessa = allComm.find(co => co.id === p.commessa_id);
-    return { ...p, commessa };
-  }).filter(p => {
-    if (!p.commessa) return false;
+  const allCommesse = clients.flatMap(c =>
+    (c.commesse || []).map(co => ({
+      ...co,
+      clientName: c.nome_progetto,
+      clientId: c.id,
+      progetto: progetti.find(p => p.commessa_id === co.id) || null,
+    }))
+  );
+
+  const commesseFiltrate = allCommesse.filter(co => {
+    if (soloAttive && co.attiva === false) return false;
     if (!search) return true;
     const s = search.toLowerCase();
     return (
-      p.commessa?.nome_commessa?.toLowerCase().includes(s) ||
-      p.commessa?.clientName?.toLowerCase().includes(s) ||
-      p.commessa?.pm_commessa?.toLowerCase().includes(s)
+      co.nome_commessa?.toLowerCase().includes(s) ||
+      co.clientName?.toLowerCase().includes(s) ||
+      co.pm_commessa?.toLowerCase().includes(s)
     );
+  }).sort((a, b) => {
+    if ((a.attiva !== false) !== (b.attiva !== false)) return a.attiva !== false ? -1 : 1;
+    return (a.clientName || '').localeCompare(b.clientName || '');
   });
 
-  if (loading) return <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>Caricamento...</div>;
+  const fmtDate = d => { if (!d) return null; const [y, m, dd] = d.split('-'); return `${dd}/${m}/${y}`; };
+
+  if (loading) return <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--gray-400)' }}>Caricamento...</div>;
 
   return (
-    <div style={{ flex: 1, overflow: 'auto', padding: isMobile ? '16px' : '28px 32px', background: '#f8fafc' }}>
-      <div style={{ display: 'flex', alignItems: isMobile ? 'flex-start' : 'center', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', gap: '12px', marginBottom: '24px' }}>
-        <div>
-          <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#0f172a', margin: 0 }}>Progetti</h2>
-          <div style={{ fontSize: '13px', color: '#64748b', marginTop: 3 }}>{progettiArricchiti.length} progetti attivi</div>
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--gray-50)' }}>
+
+      {/* ── TOOLBAR ── */}
+      <div style={{ padding: '10px 28px', background: 'var(--color-surface)', borderBottom: '0.5px solid var(--gray-200)', display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+        <span style={{ fontSize: '13px', color: 'var(--gray-500)', flex: 1 }}>
+          {commesseFiltrate.length} commess{commesseFiltrate.length === 1 ? 'a' : 'e'}
+          {!soloAttive && allCommesse.filter(co => co.attiva === false).length > 0 && (
+            <span style={{ color: 'var(--gray-400)' }}> · incluse chiuse</span>
+          )}
+        </span>
+        {/* Search lente */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: lensOpen ? 'var(--gray-50)' : 'transparent', border: lensOpen ? '1px solid var(--gray-200)' : '1px solid transparent', borderRadius: 20, padding: lensOpen ? '4px 10px 4px 8px' : '4px', transition: 'all 0.2s', cursor: 'pointer' }}
+          onClick={() => !lensOpen && setLensOpen(true)}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+            stroke={lensOpen ? 'var(--brand-700)' : 'var(--gray-400)'} strokeWidth="2"
+            strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}
+            onClick={e => { if (lensOpen) { e.stopPropagation(); setLensOpen(false); setSearch(''); } }}>
+            <circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/>
+          </svg>
+          {lensOpen && (
+            <input ref={lensRef} type="text" value={search} onChange={e => setSearch(e.target.value)}
+              placeholder="Cliente, commessa, PM..."
+              onBlur={() => { if (!search) setLensOpen(false); }}
+              style={{ border: 'none', outline: 'none', background: 'transparent', fontSize: 12, width: 180, color: 'var(--gray-950)', fontFamily: 'inherit' }} />
+          )}
+          {lensOpen && search && (
+            <span onClick={e => { e.stopPropagation(); setSearch(''); }}
+              style={{ cursor: 'pointer', color: 'var(--gray-400)', fontSize: 14, lineHeight: 1 }}>×</span>
+          )}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '7px 12px', width: isMobile ? '100%' : 'auto' }}>
-          <svg width="14" height="14" viewBox="0 0 15 15" fill="none"><circle cx="6.5" cy="6.5" r="5" stroke="#94a3b8" strokeWidth="1.5"/><path d="M10 10l3 3" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round"/></svg>
-          <input type="text" placeholder="Cerca progetto, cliente, PM..." value={search} onChange={e => setSearch(e.target.value)}
-            style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '14px', width: isMobile ? '100%' : '240px', color: '#0f172a' }} />
-        </div>
+        {/* Solo attive */}
+        <button onClick={() => setSoloAttive(v => !v)}
+          style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '5px 12px', borderRadius: 'var(--radius-xl)', border: '1px solid', fontSize: '12px', fontWeight: 500, cursor: 'pointer', userSelect: 'none',
+            ...(soloAttive ? { background: '#f0fdf4', borderColor: '#22c55e', color: '#16a34a' } : { background: 'var(--gray-100)', borderColor: 'var(--gray-200)', color: 'var(--gray-500)' }) }}>
+          <span style={{ width: 7, height: 7, borderRadius: '50%', border: '1.5px solid currentColor', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            {soloAttive && <span style={{ width: 3, height: 3, borderRadius: '50%', background: 'currentColor', display: 'block' }} />}
+          </span>
+          Solo attive
+        </button>
       </div>
 
-      {progettiArricchiti.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '60px 20px', color: '#94a3b8' }}>
-          <div style={{ fontSize: '32px', marginBottom: '12px' }}>📂</div>
-          <div style={{ fontSize: '14px', fontWeight: 500 }}>Nessun progetto trovato</div>
-          <div style={{ fontSize: '12px', marginTop: 4 }}>Genera un progetto da una commessa nella sezione Pianificazione</div>
-        </div>
-      ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(320px, 1fr))', gap: '16px' }}>
-          {progettiArricchiti.map(p => {
-            const co = p.commessa;
-            const pm = co?.pm_commessa || '—';
-            const pmAc = pm !== '—' ? getAvatarColor(pm) : { bg: '#f1f5f9', text: '#94a3b8' };
-            const isActive = co?.attiva !== false;
-            return (
-              <div key={p.id}
-                onClick={() => onOpenProgetto(p.id, p.commessa_id)}
-                style={{ background: '#fff', borderRadius: '14px', border: '0.5px solid #e2e8f0', padding: '20px 22px', cursor: 'pointer', boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 4px 10px rgba(0,0,0,0.04)', transition: 'box-shadow 0.15s, transform 0.12s', borderLeft: `4px solid ${isActive ? '#0054a6' : '#94a3b8'}` }}
-                onMouseOver={e => { e.currentTarget.style.boxShadow = '0 4px 14px rgba(0,0,0,0.10)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-                onMouseOut={e => { e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.06), 0 4px 10px rgba(0,0,0,0.04)'; e.currentTarget.style.transform = 'none'; }}>
-                <div style={{ fontSize: '16px', fontWeight: 700, color: '#0054a6', marginBottom: '3px', lineHeight: 1.2 }}>{co?.clientName || '—'}</div>
-                <div style={{ fontSize: '13px', fontWeight: 400, color: '#64748b', marginBottom: '12px', lineHeight: 1.3 }}>{co?.nome_commessa || 'Commessa non trovata'}</div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
-                  <div style={{ width: 26, height: 26, borderRadius: '50%', background: pmAc.bg, color: pmAc.text, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 700, flexShrink: 0 }}>
-                    {pm !== '—' ? getInitials(pm) : '?'}
-                  </div>
-                  <span style={{ fontSize: '12px', color: '#475569' }}>{pm}</span>
-                  {co?.data_inizio && (
-                    <span style={{ fontSize: '11px', color: '#94a3b8', marginLeft: 'auto' }}>
-                      {co.data_inizio}{co.data_fine ? ` → ${co.data_fine}` : ''}
+      {/* ── GRIGLIA CARD ── */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '16px' : '20px 28px' }}>
+        {commesseFiltrate.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--gray-400)' }}>
+            <div style={{ fontSize: '28px', marginBottom: '10px' }}>📂</div>
+            <div style={{ fontSize: '13px', fontWeight: 500 }}>Nessuna commessa trovata</div>
+            <div style={{ fontSize: '11px', marginTop: 4 }}>Prova a disattivare "Solo attive"</div>
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(300px, 1fr))', gap: '14px' }}>
+            {commesseFiltrate.map(co => {
+              const isActive = co.attiva !== false;
+              const pm = co.pm_commessa || null;
+              const pmAc = pm ? getAvatarColor(pm) : null;
+              const progetto = co.progetto;
+              const hasProgetto = !!progetto;
+              const progChiuso = progetto?.chiuso;
+              return (
+                <div key={co.id} onClick={() => onOpenCommessa && onOpenCommessa(co.clientId, co.id)} style={{
+                  background: 'var(--color-surface)',
+                  border: '0.5px solid var(--gray-200)',
+                  borderRadius: 'var(--radius-lg)',
+                  padding: '16px 18px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  opacity: isActive ? 1 : 0.6,
+                  boxShadow: 'var(--shadow-sm)',
+                  transition: 'box-shadow 0.15s',
+                  cursor: 'pointer',
+                }}
+                  onMouseOver={e => { e.currentTarget.style.boxShadow = 'var(--shadow-md)'; }}
+                  onMouseOut={e => { e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px', marginBottom: '3px' }}>
+                    <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--brand-700)', lineHeight: 1.2, flex: 1 }}>{co.clientName}</div>
+                    <span style={{ fontSize: '10px', padding: '2px 7px', borderRadius: 'var(--radius-xl)', fontWeight: 600, border: '0.5px solid', flexShrink: 0,
+                      background: isActive ? '#f0fdf4' : 'var(--gray-100)',
+                      color: isActive ? '#16a34a' : 'var(--gray-400)',
+                      borderColor: isActive ? '#bbf7d0' : 'var(--gray-200)' }}>
+                      {isActive ? 'Attiva' : 'Chiusa'}
                     </span>
+                  </div>
+                  <div style={{ fontSize: '12px', color: 'var(--gray-500)', marginBottom: '12px', lineHeight: 1.3 }}>{co.nome_commessa}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '10px' }}>
+                    {pm && pmAc ? (
+                      <>
+                        <div style={{ width: 22, height: 22, borderRadius: '50%', background: pmAc.bg, color: pmAc.text, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '8px', fontWeight: 700, flexShrink: 0 }}>{getInitials(pm)}</div>
+                        <span style={{ fontSize: '11px', color: 'var(--gray-700)' }}>{pm}</span>
+                      </>
+                    ) : (
+                      <span style={{ fontSize: '11px', color: 'var(--gray-400)', fontStyle: 'italic' }}>Nessun PM</span>
+                    )}
+                    {co.data_inizio && (
+                      <span style={{ fontSize: '10px', color: 'var(--gray-400)', marginLeft: 'auto' }}>
+                        {fmtDate(co.data_inizio)}{co.data_fine ? ` → ${fmtDate(co.data_fine)}` : ''}
+                      </span>
+                    )}
+                  </div>
+                  {co.team && co.team.length > 0 && (
+                    <div style={{ display: 'flex', gap: '3px', marginBottom: '14px' }}>
+                      {co.team.slice(0, 6).map(s => {
+                        const ac = getAvatarColor(s);
+                        return <div key={s} title={s} style={{ width: 22, height: 22, borderRadius: '50%', background: ac.bg, color: ac.text, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '8px', fontWeight: 600 }}>{getInitials(s)}</div>;
+                      })}
+                      {co.team.length > 6 && <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--gray-100)', color: 'var(--gray-500)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '8px', fontWeight: 600 }}>+{co.team.length - 6}</div>}
+                    </div>
+                  )}
+                  <div style={{ flex: 1 }} />
+                  {hasProgetto ? (
+                    <button onClick={e => { e.stopPropagation(); onOpenProgetto(progetto.id, co.id); }}
+                      style={{ width: '100%', padding: '8px', borderRadius: 'var(--radius-sm)', border: 'none', background: progChiuso ? 'var(--gray-500)' : 'var(--brand-800)', color: '#fff', fontSize: '12px', fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginTop: '4px' }}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                      {progChiuso ? 'Consulta progetto' : 'Apri progetto'}
+                    </button>
+                  ) : (
+                    <div style={{ width: '100%', padding: '7px', borderRadius: 'var(--radius-sm)', background: 'transparent', border: '0.5px dashed var(--gray-200)', color: 'var(--gray-400)', fontSize: '12px', textAlign: 'center', marginTop: '4px' }}>
+                      Nessun progetto
+                    </div>
                   )}
                 </div>
-                {co?.team && co.team.length > 0 && (
-                  <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                    {co.team.slice(0, 5).map(s => {
-                      const ac = getAvatarColor(s);
-                      return <div key={s} style={{ width: 22, height: 22, borderRadius: '50%', background: ac.bg, color: ac.text, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', fontWeight: 600 }} title={s}>{getInitials(s)}</div>;
-                    })}
-                    {co.team.length > 5 && <div style={{ width: 22, height: 22, borderRadius: '50%', background: '#f1f5f9', color: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', fontWeight: 600 }}>+{co.team.length - 5}</div>}
-                  </div>
-                )}
-                <div style={{ marginTop: '14px', display: 'flex', justifyContent: 'flex-end' }}>
-                  <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '20px', fontWeight: 600, border: '0.5px solid', background: isActive ? '#eff6ff' : '#f1f5f9', color: isActive ? '#0054a6' : '#94a3b8', borderColor: isActive ? '#bfdbfe' : '#e2e8f0' }}>
-                    {isActive ? 'Attiva' : 'Chiusa'}
-                  </span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
-export function ProgettoView({ progettoId, commessaId, clients, staff, currentUser, onBack }) {
+export function ProgettoView({ progettoId, commessaId, clients, staff, currentUser, onBack, isAdmin = false, isClienteView = false, chiuso: chiusoEsterno = false, clienteSezioni = null, clienteSubView = null, onClienteSubViewChange = null }) {
   const [tasks, setTasks] = useState([]);
   const [commessa, setCommessa] = useState(null);
   const [loading, setLoading] = useState(true);
   const [chiuso, setChiuso] = useState(false);
+  const [showClienteLink, setShowClienteLink] = useState(false);
+  const [linkAttivo, setLinkAttivo] = useState(false);
+  const [pdfProps, setPdfProps] = useState(null);
   const [editingTask, setEditingTask] = useState(null);
   const [showTaskModal, setShowTaskModal] = useState(false);
+  const [inlineEdit, setInlineEdit] = useState(null); // { taskId, field }
+
+  const saveInlineField = async (taskId, field, value) => {
+    setInlineEdit(null);
+    const update = { [field]: value !== undefined ? value : null };
+    // Auto-valorizza collaudo quando stato diventa Chiusa
+    if (field === 'stato' && value === 'Chiusa') {
+      update.collaudo = new Date().toISOString().split('T')[0];
+    }
+    await supabase.from('progetto_task').update(update).eq('id', taskId);
+    setTasks(prev => prev.map(t => t.id === taskId ? { ...t, ...update } : t));
+  };
+
+  // Helper: cella inline con SelectDropdown del portale
+  const InlineSelect = ({ taskId, field, value, options, labelMap }) => {
+    if (inlineEdit?.taskId !== taskId || inlineEdit?.field !== field) return null;
+    const opts = options.map(o => typeof o === 'string' ? { value: o, label: labelMap?.[o] || o } : o);
+    return (
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 400, minWidth: 160 }}
+        onClick={e => e.stopPropagation()}>
+        <SelectDropdown
+          options={[{ value: '', label: '— nessuno —' }, ...opts]}
+          value={value || ''}
+          onChange={v => saveInlineField(taskId, field, v || null)}
+        />
+      </div>
+    );
+  };
+
+  // Helper: datepicker inline coerente col portale
+  const InlineDate = ({ taskId, field, value }) => {
+    if (inlineEdit?.taskId !== taskId || inlineEdit?.field !== field) return null;
+    return (
+      <div style={{ position: 'absolute', top: 0, left: 0, zIndex: 400, minWidth: 160 }}
+        onClick={e => e.stopPropagation()}>
+        <div style={{ background: '#fff', border: '0.5px solid #e2e8f0', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,18,41,0.12)', padding: '10px 12px' }}>
+          <div style={{ fontSize: 10, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8 }}>Seleziona data</div>
+          <input type="date" autoFocus defaultValue={value || ''}
+            style={{ border: '1px solid #e2e8f0', borderRadius: 7, padding: '6px 10px', fontSize: 13, outline: 'none', fontFamily: 'inherit', color: '#0f172a', background: '#f8fafc', width: '100%', boxSizing: 'border-box' }}
+            onChange={e => { if (e.target.value) saveInlineField(taskId, field, e.target.value); }}
+            onBlur={e => { saveInlineField(taskId, field, e.target.value || null); }}
+            onKeyDown={e => { if (e.key === 'Escape') setInlineEdit(null); }} />
+          {value && (
+            <button onClick={() => saveInlineField(taskId, field, null)}
+              style={{ marginTop: 6, fontSize: 11, color: '#dc2626', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}>
+              × Rimuovi data
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  // Helper: step inline con bottoni 1/2/3
+  const InlineStep = ({ taskId, value }) => {
+    if (inlineEdit?.taskId !== taskId || inlineEdit?.field !== 'step') return null;
+    return (
+      <div style={{ position: 'absolute', top: 0, left: 0, zIndex: 400 }}
+        onClick={e => e.stopPropagation()}>
+        <div style={{ background: '#fff', border: '0.5px solid #e2e8f0', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,18,41,0.12)', padding: '10px 12px', display: 'flex', gap: 6, alignItems: 'center' }}>
+          {[1, 2, 3].map(s => (
+            <div key={s} onClick={() => saveInlineField(taskId, 'step', s)}
+              style={{ width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontWeight: 700, fontSize: 13, border: '1.5px solid', background: value === s ? '#001d47' : '#f8fafc', borderColor: value === s ? '#001d47' : '#e2e8f0', color: value === s ? '#fff' : '#64748b', transition: 'all 0.15s', userSelect: 'none' }}>
+              {s}
+            </div>
+          ))}
+          {value && <div onClick={() => saveInlineField(taskId, 'step', null)} style={{ width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 13, border: '1.5px solid #fecaca', color: '#dc2626', background: '#fef2f2', userSelect: 'none' }}>×</div>}
+        </div>
+      </div>
+    );
+  };
   const [newTaskParentId, setNewTaskParentId] = useState(null);
   const [newTaskReparto, setNewTaskReparto] = useState(null);
-  const [subView, setSubView] = useState('home');
+  const [subView, _setSubView] = useState('home');
+  const setSubView = (v) => { _setSubView(v); if (onClienteSubViewChange) onClienteSubViewChange(v); };
+  const activeSubView = isClienteView && clienteSubView ? clienteSubView : subView;
   const [filterReparto, setFilterReparto] = useState([]);
   const [filterStato, setFilterStato] = useState([]);
   const [filterInCarico, setFilterInCarico] = useState([]);
@@ -211,23 +366,21 @@ export function ProgettoView({ progettoId, commessaId, clients, staff, currentUs
 
     // ── Sincronizza attività workflow della commessa → progetto_task ──────────
     // Carica attività workflow collegate alla commessa
-    const { data: attWf, error: attWfError } = await supabase
+    const { data: attWf } = await supabase
       .from('attivita')
-      .select('id, titolo, priorita, data_rilascio, data_richiesta, colonna:colonna_id(nome)')
-      .eq('commessa_id', commessaId);
+      .select('id, titolo, priorita, stato, data_rilascio, data_richiesta, in_carico_a, colonna:colonna_id(nome)')
+      .eq('commessa_id', commessaId)
+      .eq('tipo', 'sviluppo');
 
     if (attWf && attWf.length > 0) {
-      // Carica i task SVILUPPO già presenti — usa attivita_id se disponibile,
-      // altrimenti fallback su titolo per evitare duplicati
+      // Carica i task sviluppo già presenti in progetto_task (quelli con attivita_id)
       const { data: existingLinks } = await supabase
         .from('progetto_task')
-        .select('attivita_id, attivita')
+        .select('attivita_id')
         .eq('progetto_id', progettoId)
-        .eq('reparto', 'SVILUPPO')
-        .not('attivita', 'is', null);
+        .not('attivita_id', 'is', null);
 
-      const linkedIds = new Set((existingLinks || []).map(t => t.attivita_id).filter(Boolean));
-      const linkedTitoli = new Set((existingLinks || []).map(t => (t.attivita || '').trim().toLowerCase()).filter(Boolean));
+      const linkedIds = new Set((existingLinks || []).map(t => t.attivita_id));
 
       // Trova o crea la riga SVILUPPO reparto
       const { data: repartoSvil } = await supabase
@@ -279,10 +432,7 @@ export function ProgettoView({ progettoId, commessaId, clients, staff, currentUs
       }
 
       // Inserisci le attività workflow mancanti
-      // Esclude se già linked per id O per titolo (fallback se attivita_id non esiste nel DB)
-      const nuoveAttivita = attWf.filter(a =>
-        !linkedIds.has(a.id) && !linkedTitoli.has((a.titolo || '').trim().toLowerCase())
-      );
+      const nuoveAttivita = attWf.filter(a => !linkedIds.has(a.id));
       if (nuoveAttivita.length > 0) {
         const { data: figliCount } = await supabase
           .from('progetto_task')
@@ -300,7 +450,7 @@ export function ProgettoView({ progettoId, commessaId, clients, staff, currentUs
           attivita: a.titolo,
           priorita: a.priorita || 'media',
           stato: (() => {
-            const col = (a.colonna && a.colonna.nome) ? a.colonna.nome : '';
+            const col = a.colonna?.nome || '';
             if (/complet|done/i.test(col)) return 'Chiusa';
             if (/corso|progress/i.test(col)) return 'In Corso';
             if (/collaudo|test/i.test(col)) return 'Da collaudare';
@@ -327,7 +477,10 @@ export function ProgettoView({ progettoId, commessaId, clients, staff, currentUs
     const allComm = clients.flatMap(c => c.commesse.map(co => ({ ...co, clientName: c.nome_progetto })));
     const comm = allComm.find(co => co.id === commessaId) || null;
     setCommessa(comm);
-    setChiuso(progData?.chiuso === true || comm?.attiva === false);
+    setChiuso(chiusoEsterno || progData?.chiuso === true || comm?.attiva === false);
+    const { data: lnk } = await supabase.from('progetto_link_cliente')
+      .select('id').eq('progetto_id', progettoId).eq('attivo', true).maybeSingle();
+    setLinkAttivo(!!lnk);
     setLoading(false);
   };
 
@@ -367,6 +520,7 @@ export function ProgettoView({ progettoId, commessaId, clients, staff, currentUs
       parent_id: task.parent_id || null,
       ordine: task.ordine || 0,
       task_id_display: task.task_id_display || '',
+      task_owner: task.task_owner || null,
     };
     if (task.id) {
       const { error } = await supabase.from('progetto_task').update(payload).eq('id', task.id);
@@ -420,7 +574,7 @@ export function ProgettoView({ progettoId, commessaId, clients, staff, currentUs
       // Filtri colonna
       for (const [col, val] of Object.entries(colFilters)) {
         if (!val || (Array.isArray(val) ? val.length === 0 : val === '')) continue;
-        const fieldMap = { 'Categoria': 'categoria', 'Priorità': 'priorita', 'Stato': 'stato', 'In carico a': 'in_carico_a', 'Step': 'step', 'Attività': 'attivita', 'Note': 'note', 'Previsto': 'previsto', 'Chiusa il': 'collaudo' };
+        const fieldMap = { 'Categoria': 'categoria', 'Priorità': 'priorita', 'Stato': 'stato', 'In carico a': 'in_carico_a', 'Assegnato a': 'task_owner', 'Step': 'step', 'Attività': 'attivita', 'Note': 'note', 'Previsto': 'previsto', 'Chiusa il': 'collaudo' };
         const field = fieldMap[col];
         if (!field) continue;
         const cellVal = (t[field] || '').toString().toLowerCase();
@@ -440,10 +594,10 @@ export function ProgettoView({ progettoId, commessaId, clients, staff, currentUs
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#f8fafc' }}>
 
       {/* HEADER */}
-      <div style={{ background: '#fff', borderBottom: '1px solid #e2e8f0', padding: isMobile ? '0 12px' : '0 24px', display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-start' : 'stretch', gap: 0, flexShrink: 0 }}>
+      <div style={{ background: '#fff', borderBottom: '1px solid #e2e8f0', padding: isMobile ? '0 12px' : '0 24px', display: isClienteView ? 'none' : 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-start' : 'stretch', gap: 0, flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: isMobile ? '10px 0 6px' : '12px 0', marginRight: isMobile ? 0 : '24px', borderRight: isMobile ? 'none' : '1px solid #e2e8f0', paddingRight: isMobile ? 0 : '24px', borderBottom: isMobile ? '1px solid #f1f5f9' : 'none', width: isMobile ? '100%' : 'auto' }}>
           <button onClick={onBack} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', flexShrink: 0 }}>
-            ← <span>Progetti</span>
+            ← <span>Commesse e Progetti</span>
           </button>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{commessa?.nome_commessa || 'Progetto'}</div>
@@ -458,13 +612,13 @@ export function ProgettoView({ progettoId, commessaId, clients, staff, currentUs
           <div style={{ padding: '8px 0', width: '100%' }}>
             <select value={subView} onChange={e => setSubView(e.target.value)}
               style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1.5px solid #e2e8f0', background: '#f8fafc', fontSize: '14px', fontWeight: 600, color: '#0054a6', outline: 'none', appearance: 'none', backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%230054a6' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}>
-              {[{ key: 'home', label: 'Home' }, { key: 'dettaglio', label: 'Dettaglio Attività' }, { key: 'gantt', label: 'Gantt' }, { key: 'avanzamento', label: 'Avanzamento' }, { key: 'consuntivi', label: 'Consuntivi' }, { key: 'note', label: 'Note' }].map(tab => <option key={tab.key} value={tab.key}>{tab.label}</option>)}
+              {[{ key: 'home', label: 'Home' }, { key: 'dettaglio', label: 'Dettaglio Attività' }, { key: 'gantt', label: 'Gantt' }, { key: 'avanzamento', label: 'Avanzamento' }, { key: 'mappe', label: 'Mappe' }, { key: 'consuntivi', label: 'Consuntivi' }, { key: 'note', label: 'Note' }].map(tab => <option key={tab.key} value={tab.key}>{tab.label}</option>)}
             </select>
           </div>
         ) : (
           <div style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
             <div style={{ display: 'flex', background: '#f1f5f9', padding: '4px', borderRadius: '10px', gap: '3px', alignSelf: 'center', margin: '0 16px' }}>
-              {[{ key: 'home', label: 'Home' }, { key: 'dettaglio', label: 'Dettaglio Attività' }, { key: 'gantt', label: 'Gantt' }, { key: 'avanzamento', label: 'Avanzamento' }, { key: 'consuntivi', label: 'Consuntivi' }, { key: 'note', label: 'Note' }].map(tab => (
+              {[{ key: 'home', label: 'Home' }, { key: 'dettaglio', label: 'Dettaglio Attività' }, { key: 'gantt', label: 'Gantt' }, { key: 'avanzamento', label: 'Avanzamento' }, { key: 'mappe', label: 'Mappe' }, { key: 'consuntivi', label: 'Consuntivi' }, { key: 'note', label: 'Note' }].map(tab => (
                 <button key={tab.key} onClick={() => setSubView(tab.key)} style={{ padding: '6px 14px', borderRadius: '7px', border: 'none', fontSize: '12px', cursor: 'pointer', transition: 'all 0.15s', background: subView === tab.key ? '#fff' : 'transparent', color: subView === tab.key ? '#0054a6' : '#64748b', fontWeight: subView === tab.key ? 600 : 400, boxShadow: subView === tab.key ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>{tab.label}</button>
               ))}
             </div>
@@ -473,8 +627,30 @@ export function ProgettoView({ progettoId, commessaId, clients, staff, currentUs
                 🔒 Progetto chiuso — sola lettura
               </div>
             )}
+            {!isMobile && pdfProps && (
+              <div style={{ marginLeft: chiuso ? 8 : 'auto', flexShrink: 0 }}>
+                <RelazioneProgettoPDF {...pdfProps} />
+              </div>
+            )}
+            {isAdmin && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: pdfProps ? 8 : (chiuso ? 8 : 'auto'), flexShrink: 0 }}>
+                {linkAttivo ? (
+                  <button onClick={() => setShowClienteLink(true)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '7px 14px', borderRadius: 8, border: '1.5px solid #16a34a', background: '#f0fdf4', color: '#15803d', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                    Aperto al cliente
+                  </button>
+                ) : (
+                  <button onClick={() => setShowClienteLink(true)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '7px 14px', borderRadius: 8, border: '1.5px solid var(--brand-800)', background: '#fff', color: 'var(--brand-800)', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                    Apri al cliente
+                  </button>
+                )}
+              </div>
+            )}
 
-            {subView === 'dettaglio' && !chiuso && (
+            {activeSubView === 'dettaglio' && !chiuso && (
               <div style={{ marginLeft: 'auto', display: 'flex', gap: '6px', alignItems: 'center', padding: '8px 0', flexWrap: 'wrap' }}>
                 <div style={{ width: 1, height: 18, background: '#e2e8f0' }} />
                 <button onClick={() => {
@@ -484,7 +660,7 @@ export function ProgettoView({ progettoId, commessaId, clients, staff, currentUs
                   {expandAll ? '▼' : '▶'}
                 </button>
                 <button onClick={() => {
-                  const rows = [['ID','Categoria','Attività','Priorità','Stato','Note','In carico a','Previsto','Chiusa il','Step']];
+                  const rows = [['ID','Categoria','Attività','Priorità','Stato','Note','In carico a','Assegnato a','Previsto','Chiusa il','Step']];
                   tasks.filter(t => !isReparto(t)).forEach(t => {
                     rows.push([
                       t.task_id_display || '', t.categoria || '', t.attivita || '',
@@ -511,7 +687,7 @@ export function ProgettoView({ progettoId, commessaId, clients, staff, currentUs
           </div>
         )}
 
-        {isMobile && subView === 'dettaglio' && !chiuso && (
+        {isMobile && activeSubView === 'dettaglio' && !chiuso && (
           <div style={{ display: 'flex', gap: '6px', alignItems: 'center', padding: '8px 0', flexWrap: 'wrap', borderTop: '1px solid #f1f5f9' }}>
             <button onClick={() => setShowModuloModal(true)} style={{ padding: '6px 12px', borderRadius: '20px', border: '1px solid #e2e8f0', background: '#f8fafc', color: '#475569', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>+ Modulo</button>
             <button onClick={() => { setEditingTask(null); setNewTaskParentId(null); setNewTaskReparto(reparti[0] || ''); setShowTaskModal(true); }} style={{ padding: '6px 12px', borderRadius: '20px', border: '1px solid #bfdbfe', background: '#eff6ff', color: '#0054a6', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>+ Task</button>
@@ -519,11 +695,11 @@ export function ProgettoView({ progettoId, commessaId, clients, staff, currentUs
         )}
       </div>
 
-      {subView === 'home' && (
-        <ProgettoHome commessa={commessa} commessaId={commessaId} tasks={tasks} staff={staff} progettoId={progettoId} isReparto={isReparto} chiuso={chiuso} />
+      {activeSubView === 'home' && (
+        <ProgettoHome commessa={commessa} commessaId={commessaId} tasks={tasks} staff={staff} progettoId={progettoId} isReparto={isReparto} chiuso={chiuso} onKpiReady={setPdfProps} isClienteView={isClienteView} />
       )}
 
-      {subView === 'dettaglio' && (
+      {activeSubView === 'dettaglio' && (
         <div style={{ flex: 1, overflow: 'auto', padding: isMobile ? '12px' : '20px 24px' }}>
               {/* Badge filtri attivi */}
               {Object.entries(colFilters).some(([,v]) => Array.isArray(v) ? v.length > 0 : v !== '') && (
@@ -542,11 +718,11 @@ export function ProgettoView({ progettoId, commessaId, clients, staff, currentUs
           <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', fontSize: '12px' }}>
             <thead>
               <tr style={{ background: '#f8fafc' }}>
-                {['ID', 'Categoria', 'Attività', 'Priorità', 'Stato', 'Note', 'In carico a', 'Previsto', 'Chiusa il', 'Step', ''].map(h => {
-                  const DISCRETE = ['Categoria', 'Priorità', 'Stato', 'In carico a', 'Step'];
+                {['ID', 'Categoria', 'Attività', 'Priorità', 'Stato', 'Note', 'In carico a', 'Assegnato a', 'Previsto', 'Chiusa il', 'Step', ''].map(h => {
+                  const DISCRETE = ['Categoria', 'Priorità', 'Stato', 'In carico a', 'Assegnato a', 'Step'];
                   const TEXT = ['Attività', 'Note', 'Previsto', 'Collaudo'];
                   const filterable = DISCRETE.includes(h) || TEXT.includes(h);
-                  const fieldMap = { 'Categoria': 'categoria', 'Priorità': 'priorita', 'Stato': 'stato', 'In carico a': 'in_carico_a', 'Step': 'step', 'Attività': 'attivita', 'Note': 'note', 'Previsto': 'previsto', 'Chiusa il': 'collaudo' };
+                  const fieldMap = { 'Categoria': 'categoria', 'Priorità': 'priorita', 'Stato': 'stato', 'In carico a': 'in_carico_a', 'Assegnato a': 'task_owner', 'Step': 'step', 'Attività': 'attivita', 'Note': 'note', 'Previsto': 'previsto', 'Chiusa il': 'collaudo' };
                   const field = fieldMap[h];
                   const activeVals = colFilters[h];
                   const hasFilter = activeVals && (Array.isArray(activeVals) ? activeVals.length > 0 : activeVals !== '');
@@ -624,8 +800,8 @@ export function ProgettoView({ progettoId, commessaId, clients, staff, currentUs
                       </td>
                       <td style={{ ...tdStyle, borderBottom: '1px solid #e2e8f0' }}>
                         <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                          <button onClick={e => { e.stopPropagation(); setEditingTask(null); setNewTaskParentId(null); setNewTaskReparto(row.reparto); setShowTaskModal(true); }} style={{ background: '#e2e8f0', border: 'none', borderRadius: '6px', padding: '3px 8px', color: '#475569', cursor: 'pointer', fontSize: '11px' }}>+ Task</button>
-                          <button onClick={async e => {
+                          {!chiuso && <button onClick={e => { e.stopPropagation(); setEditingTask(null); setNewTaskParentId(null); setNewTaskReparto(row.reparto); setShowTaskModal(true); }} style={{ background: '#e2e8f0', border: 'none', borderRadius: '6px', padding: '3px 8px', color: '#475569', cursor: 'pointer', fontSize: '11px' }}>+ Task</button>}
+                          {!chiuso && <button onClick={async e => {
                             e.stopPropagation();
                             if (!window.confirm(`Eliminare il modulo "${row.reparto}" e tutti i suoi task?`)) return;
                             const ids = tasks.filter(t => t.reparto === row.reparto).map(t => t.id);
@@ -634,7 +810,7 @@ export function ProgettoView({ progettoId, commessaId, clients, staff, currentUs
                             await loadProgetto();
                           }} style={{ background: 'none', border: 'none', borderRadius: '6px', padding: '3px 6px', color: '#cbd5e1', cursor: 'pointer', fontSize: '12px', transition: 'all 0.15s' }}
                             onMouseOver={e => { e.currentTarget.style.color = '#dc2626'; }}
-                            onMouseOut={e => { e.currentTarget.style.color = '#cbd5e1'; }}>🗑</button>
+                            onMouseOut={e => { e.currentTarget.style.color = '#cbd5e1'; }}>🗑</button>}
                         </div>
                       </td>
                     </tr>
@@ -644,41 +820,127 @@ export function ProgettoView({ progettoId, commessaId, clients, staff, currentUs
                 const sc = STATO_COL[task.stato] || STATO_COL['Da Iniziare'];
                 const pc = PRIORITA_COLORS[task.priorita] || PRIORITA_COLORS.media;
                 const depth = (task.task_id_display?.split('.').length - 2) * 14;
+                const isEditing = (field) => !chiuso && !task.attivita_id && inlineEdit?.taskId === task.id && inlineEdit?.field === field;
+                const startEdit = (e, field) => { e.stopPropagation(); if (!chiuso && !task.attivita_id) setInlineEdit({ taskId: task.id, field }); };
+                const tdEdit = { ...tdStyle, position: 'relative' };
+                const inputStyle = { width: '100%', border: '1.5px solid #185FA5', borderRadius: 5, padding: '2px 6px', fontSize: 12, outline: 'none', fontFamily: 'inherit', background: '#fff', color: '#0f172a' };
+                const selectStyle = { ...inputStyle, cursor: 'pointer' };
+                const staffOptions = (staff || []).map(s => { const k = s.cognome && s.nome ? `${s.cognome} ${s.nome}` : (s.nome || s.cognome || ''); return k; }).filter(Boolean);
+
                 return (
                   <tr key={task.id}
-                    onClick={() => {
-                      if (task.attivita_id) { openCardPreview(task.attivita_id); return; }
-                      if (!chiuso) { setEditingTask(task); setShowTaskModal(true); }
-                    }}
-                    onMouseOver={e => e.currentTarget.style.background = task.attivita_id ? '#f0fdf8' : '#f8fafc'}
-                    onMouseOut={e => e.currentTarget.style.background = task.attivita_id ? '#f8fffe' : '#fff'}
-                    style={{ background: task.attivita_id ? '#f8fffe' : '#fff', borderLeft: task.attivita_id ? '2px solid #9FE1CB' : 'none', cursor: 'pointer' }}>
+                    onMouseOver={e => { if (!inlineEdit) e.currentTarget.style.background = task.attivita_id ? '#f0fdf8' : '#f8fafc'; }}
+                    onMouseOut={e => { if (!inlineEdit) e.currentTarget.style.background = task.attivita_id ? '#f8fffe' : '#fff'; }}
+                    style={{ background: task.attivita_id ? '#f8fffe' : '#fff', borderLeft: task.attivita_id ? '2px solid #9FE1CB' : 'none' }}>
+
+                    {/* ID */}
                     <td style={{ ...tdStyle, color: '#94a3b8', fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums', paddingLeft: 10 + Math.max(0, depth) }}>{task.task_id_display}</td>
-                    <td style={{ ...tdStyle, color: '#475569' }}>{task.categoria}</td>
-                    <td style={{ ...tdStyle, color: '#0f172a', fontWeight: 500, minWidth: 160 }}>{task.attivita}</td>
-                    <td style={{ ...tdStyle }}>
-                      {task.priorita && <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', background: pc.bg, color: pc.text, fontWeight: 500, border: `0.5px solid ${pc.border}` }}>{task.priorita}</span>}
+
+                    {/* Categoria */}
+                    <td style={{ ...tdEdit, minWidth: 120 }} onClick={e => startEdit(e, 'categoria')}>
+                      <InlineSelect taskId={task.id} field="categoria" value={task.categoria}
+                        options={['Configurazione','Analisi','Sviluppo','Test','Formazione']} />
+                      {!isEditing('categoria') && <span style={{ color: '#475569', display: 'block', minHeight: 20 }}>{task.categoria || <span style={{ color: '#e2e8f0' }}>—</span>}</span>}
                     </td>
-                    <td style={{ ...tdStyle }}>
-                      {task.stato && <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '6px', background: sc.bg, color: sc.text, fontWeight: 500, border: `0.5px solid ${sc.border}`, whiteSpace: 'nowrap' }}>{task.stato}</span>}
+
+                    {/* Attività */}
+                    <td style={{ ...tdEdit, minWidth: 160 }} onClick={e => startEdit(e, 'attivita')}>
+                      {isEditing('attivita') ? (
+                        <input autoFocus defaultValue={task.attivita || ''} style={{ ...inputStyle, minWidth: 180 }}
+                          onBlur={e => saveInlineField(task.id, 'attivita', e.target.value)}
+                          onKeyDown={e => { if (e.key === 'Enter') e.target.blur(); if (e.key === 'Escape') setInlineEdit(null); }} />
+                      ) : <span style={{ color: '#0f172a', fontWeight: 500, display: 'block', minHeight: 20 }}>{task.attivita || <span style={{ color: '#e2e8f0' }}>—</span>}</span>}
                     </td>
-                    <td style={{ ...tdStyle, color: '#64748b', maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={task.note}>{task.note}</td>
-                    <td style={{ ...tdStyle, color: '#475569', whiteSpace: 'nowrap' }}>
-                      {task.in_carico_a === 'CLIENTE' && commessa?.clientName ? commessa.clientName
-                       : task.in_carico_a === 'ZCS/CLIENTE' && commessa?.clientName ? `ZCS/${commessa.clientName}`
-                       : task.in_carico_a}
+
+                    {/* Priorità */}
+                    <td style={{ ...tdEdit, minWidth: 80 }} onClick={e => startEdit(e, 'priorita')}>
+                      <InlineSelect taskId={task.id} field="priorita" value={task.priorita}
+                        options={['alta','media','bassa']} />
+                      {!isEditing('priorita') && (task.priorita ? (
+                        <span style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:11, fontWeight:500, color:pc.text }}>
+                          <span style={{ width:6, height:6, borderRadius:'50%', background:pc.bar, flexShrink:0, display:'inline-block' }} />{task.priorita}
+                        </span>
+                      ) : <span style={{ color: '#e2e8f0' }}>—</span>)}
                     </td>
-                    <td style={{ ...tdStyle, color: '#475569', whiteSpace: 'nowrap' }}>{task.previsto ? new Date(task.previsto).toLocaleDateString('it-IT') : ''}</td>
-                    <td style={{ ...tdStyle, color: '#475569', whiteSpace: 'nowrap' }}>{task.collaudo ? new Date(task.collaudo).toLocaleDateString('it-IT') : ''}</td>
-                    <td style={{ ...tdStyle, textAlign: 'center' }}>
-                      {task.step && <span style={{ display: 'inline-block', width: 20, height: 20, borderRadius: '50%', background: '#eff6ff', color: '#0054a6', fontSize: '11px', fontWeight: 700, lineHeight: '20px', textAlign: 'center', border: '1px solid #bfdbfe' }}>{task.step}</span>}
+
+                    {/* Stato */}
+                    <td style={{ ...tdEdit, minWidth: 110 }} onClick={e => startEdit(e, 'stato')}>
+                      <InlineSelect taskId={task.id} field="stato" value={task.stato} options={STATI_TASK} />
+                      {!isEditing('stato') && (task.stato ? (
+                        <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '6px', background: sc.bg, color: sc.text, fontWeight: 500, border: `0.5px solid ${sc.border}`, whiteSpace: 'nowrap' }}>{task.stato}</span>
+                      ) : <span style={{ color: '#e2e8f0' }}>—</span>)}
                     </td>
+
+                    {/* Note */}
+                    <td style={{ ...tdEdit, maxWidth: 140 }} onClick={e => startEdit(e, 'note')}>
+                      {isEditing('note') ? (
+                        <input autoFocus defaultValue={task.note || ''} style={{ ...inputStyle, minWidth: 120 }}
+                          onBlur={e => saveInlineField(task.id, 'note', e.target.value)}
+                          onKeyDown={e => { if (e.key === 'Enter') e.target.blur(); if (e.key === 'Escape') setInlineEdit(null); }} />
+                      ) : <span style={{ color: '#64748b', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minHeight: 20 }} title={task.note}>{task.note || <span style={{ color: '#e2e8f0' }}>—</span>}</span>}
+                    </td>
+
+                    {/* In carico a */}
+                    <td style={{ ...tdEdit, minWidth: 100 }} onClick={e => startEdit(e, 'in_carico_a')}>
+                      <InlineSelect taskId={task.id} field="in_carico_a" value={task.in_carico_a}
+                        options={IN_CARICO_OPTIONS}
+                        labelMap={Object.fromEntries(IN_CARICO_OPTIONS.map(o => [o, o === 'CLIENTE' && commessa?.clientName ? commessa.clientName : o === 'ZCS/CLIENTE' && commessa?.clientName ? `ZCS/${commessa.clientName}` : o]))} />
+                      {!isEditing('in_carico_a') && <span style={{ color: '#475569', whiteSpace: 'nowrap', display: 'block', minHeight: 20 }}>
+                        {task.in_carico_a === 'CLIENTE' && commessa?.clientName ? commessa.clientName
+                         : task.in_carico_a === 'ZCS/CLIENTE' && commessa?.clientName ? `ZCS/${commessa.clientName}`
+                         : task.in_carico_a || <span style={{ color: '#e2e8f0' }}>—</span>}
+                      </span>}
+                    </td>
+
+                    {/* Task owner */}
+                    <td style={{ ...tdEdit, minWidth: 120 }} onClick={e => startEdit(e, 'task_owner')}>
+                      <InlineSelect taskId={task.id} field="task_owner" value={task.task_owner} options={staffOptions} />
+                      {!isEditing('task_owner') && (task.task_owner ? (() => {
+                        const ownerObj = (staff || []).find(s => { const k = s.cognome && s.nome ? `${s.cognome} ${s.nome}` : (s.nome || s.cognome || ''); return k === task.task_owner; });
+                        return (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <Avatar name={task.task_owner} avatarUrl={ownerObj?.avatar_url} size={20} />
+                            <span style={{ fontSize: 12, color: '#475569', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 100 }}>{task.task_owner}</span>
+                          </div>
+                        );
+                      })() : <span style={{ color: '#e2e8f0', fontSize: 11 }}>—</span>)}
+                    </td>
+
+                    {/* Previsto */}
+                    <td style={{ ...tdEdit, minWidth: 90 }} onClick={e => startEdit(e, 'previsto')}>
+                      <InlineDate taskId={task.id} field="previsto" value={task.previsto} />
+                      {!isEditing('previsto') && <span style={{ color: '#475569', whiteSpace: 'nowrap', display: 'block', minHeight: 20 }}>{task.previsto ? new Date(task.previsto).toLocaleDateString('it-IT') : <span style={{ color: '#e2e8f0' }}>—</span>}</span>}
+                    </td>
+
+                    {/* Collaudo */}
+                    <td style={{ ...tdEdit, minWidth: 90 }} onClick={e => startEdit(e, 'collaudo')}>
+                      <InlineDate taskId={task.id} field="collaudo" value={task.collaudo} />
+                      {!isEditing('collaudo') && <span style={{ color: '#475569', whiteSpace: 'nowrap', display: 'block', minHeight: 20 }}>{task.collaudo ? new Date(task.collaudo).toLocaleDateString('it-IT') : <span style={{ color: '#e2e8f0' }}>—</span>}</span>}
+                    </td>
+
+                    {/* Step */}
+                    <td style={{ ...tdEdit, textAlign: 'center' }} onClick={e => startEdit(e, 'step')}>
+                      <InlineStep taskId={task.id} value={task.step} />
+                      {!isEditing('step') && (task.step ? (
+                        <span style={{ display: 'inline-block', width: 20, height: 20, borderRadius: '50%', background: '#eff6ff', color: '#0054a6', fontSize: '11px', fontWeight: 700, lineHeight: '20px', textAlign: 'center', border: '1px solid #bfdbfe' }}>{task.step}</span>
+                      ) : <span style={{ color: '#e2e8f0' }}>—</span>)}
+                    </td>
+
+                    {/* Azioni */}
                     <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>
                       {task.attivita_id ? (
-                        <span style={{ fontSize: '10px', color: '#94a3b8', fontStyle: 'italic' }}>da workflow</span>
+                        <span style={{ fontSize: '10px', color: '#94a3b8', fontStyle: 'italic' }}>workflow</span>
                       ) : (<>
-                        <button onClick={e => { e.stopPropagation(); if (!chiuso) { setEditingTask(null); setNewTaskParentId(task.id); setNewTaskReparto(task.reparto); setShowTaskModal(true); } }} style={{ background: 'none', border: 'none', cursor: chiuso ? 'default' : 'pointer', color: chiuso ? '#e2e8f0' : '#94a3b8', fontSize: '13px', marginRight: 4 }} title="Sub-task">↳</button>
-                        <button onClick={e => { e.stopPropagation(); deleteTask(task.id); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#fca5a5', fontSize: '13px' }} title="Elimina">🗑</button>
+                        {/* Apri modale */}
+                        <button onClick={e => { e.stopPropagation(); if (!chiuso) { setEditingTask(task); setShowTaskModal(true); } else { setEditingTask(task); setShowTaskModal(true); } }}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: '13px', marginRight: 2, padding: '2px 4px', borderRadius: 4, transition: 'all 0.12s' }}
+                          title="Apri dettaglio"
+                          onMouseOver={e => { e.currentTarget.style.color = '#185FA5'; e.currentTarget.style.background = '#eff6ff'; }}
+                          onMouseOut={e => { e.currentTarget.style.color = '#94a3b8'; e.currentTarget.style.background = 'transparent'; }}>
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                        </button>
+                        <button onClick={e => { e.stopPropagation(); if (!chiuso) { setEditingTask(null); setNewTaskParentId(task.id); setNewTaskReparto(task.reparto); setShowTaskModal(true); } }} style={{ background: 'none', border: 'none', cursor: chiuso ? 'default' : 'pointer', color: chiuso ? '#e2e8f0' : '#94a3b8', fontSize: '13px', marginRight: 2 }} title="Sub-task">↳</button>
+                        {!chiuso && <button onClick={e => { e.stopPropagation(); deleteTask(task.id); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#fca5a5', fontSize: '13px' }} title="Elimina">🗑</button>}
                       </>)}
                     </td>
                   </tr>
@@ -689,7 +951,7 @@ export function ProgettoView({ progettoId, commessaId, clients, staff, currentUs
         </div>
       )}
 
-{subView === 'gantt' && (
+{activeSubView === 'gantt' && (
   <DesktopOnly label="Gantt progetto">
     <ProgettoGantt
       tasks={tasks.filter(t => !isReparto(t))}
@@ -700,18 +962,34 @@ export function ProgettoView({ progettoId, commessaId, clients, staff, currentUs
     />
   </DesktopOnly>
 )}
-      {subView === 'avanzamento' && (
+      {activeSubView === 'avanzamento' && (
         <DesktopOnly label="Avanzamento">
           <AvanzamentoView tasks={tasks.filter(t => !isReparto(t))} clientName={commessa?.clientName} />
         </DesktopOnly>
       )}
 
-      {subView === 'consuntivi' && <ConsuntiviView progettoId={progettoId} commessaId={commessaId} />}
-      {subView === 'note' && <NoteProgetto progettoId={progettoId} staff={staff} currentUser={currentUser} commessa={commessa} chiuso={chiuso} />}
+      {activeSubView === 'mappe' && <MappaView progettoId={progettoId} readOnly={isClienteView} />}
+      {activeSubView === 'consuntivi' && <ConsuntiviView progettoId={progettoId} commessaId={commessaId} />}
+      {activeSubView === 'note' && <NoteProgetto progettoId={progettoId} staff={staff} currentUser={currentUser} commessa={commessa} chiuso={chiuso} />}
 
+      {showClienteLink && (
+        <ClienteLinkModal
+          progettoId={progettoId}
+          commessa={commessa}
+          onClose={async () => {
+            setShowClienteLink(false);
+            const { data: lnk } = await supabase.from('progetto_link_cliente')
+              .select('id').eq('progetto_id', progettoId).eq('attivo', true).maybeSingle();
+            setLinkAttivo(!!lnk);
+          }}
+        />
+      )}
       {showModuloModal && !chiuso && <ModuloModal progettoId={progettoId} repartiEsistenti={reparti} onClose={() => { setShowModuloModal(false); loadProgetto(); }} />}
       {showTaskModal && (editingTask?.attivita_id ? true : !chiuso) && (
-        <TaskModal task={editingTask} reparti={reparti} defaultReparto={newTaskReparto} defaultParentId={newTaskParentId} onSave={saveTask} clientName={commessa?.clientName} readOnly={!!(chiuso || editingTask?.attivita_id)} onClose={() => { setShowTaskModal(false); setEditingTask(null); }} />
+        <TaskModal task={editingTask} reparti={reparti} defaultReparto={newTaskReparto} defaultParentId={newTaskParentId} onSave={saveTask} clientName={commessa?.clientName} readOnly={!!(chiuso || editingTask?.attivita_id)} onClose={() => { setShowTaskModal(false); setEditingTask(null); }} staff={(staff || []).filter(s => {
+                  const key = s.cognome && s.nome ? `${s.cognome} ${s.nome}` : (s.nome || s.cognome || '');
+                  return (commessa?.team || []).includes(key);
+                })} />
       )}
       {cardPreview && (
         <CardPreviewModal
@@ -801,7 +1079,7 @@ function SearchLensBolle({ value, onChange }) {
   );
 }
 
-export function ProgettoHome({ commessa, commessaId, tasks, staff, progettoId, isReparto, chiuso }) {
+export function ProgettoHome({ commessa, commessaId, tasks, staff, progettoId, isReparto, chiuso, onKpiReady, isClienteView = false }) {
   const [consuntivi, setConsuntivi] = useState([]);
   const [ordini, setOrdini] = useState([]);
   const [bolleConsulenza, setBolleConsulenza] = useState([]);
@@ -904,6 +1182,15 @@ export function ProgettoHome({ commessa, commessaId, tasks, staff, progettoId, i
   const giorniSvoltiSvil = oreTecSvil / 8;
   const giorniResiduiSvil = giorniDispSvil - giorniSvoltiSvil;
   const efficaciaSvil = oreTecSvil > 0 ? (orePagSvil / oreTecSvil * 100) : null;
+
+  useEffect(() => {
+    if (onKpiReady && (consuntivi.length > 0 || bolleConsulenza.length > 0 || bolleSviluppo.length > 0)) {
+      onKpiReady({ commessa, tasks, isReparto, reparti,
+        oreTecCons, orePagCons, giorniDispCons, giorniSvoltiCons, giorniResiduiCons,
+        oreTecSvil, orePagSvil, giorniDispSvil, giorniSvoltiSvil, giorniResiduiSvil,
+        bolleConsulenza, bolleSviluppo });
+    }
+  }, [consuntivi, bolleConsulenza, bolleSviluppo]);
  
   // KPI attività sviluppo workflow
   const isColonnaChiusa = (col) => col && /complet|annullat|done|chiusa/i.test(col);
@@ -1005,12 +1292,12 @@ export function ProgettoHome({ commessa, commessaId, tasks, staff, progettoId, i
                 <span style={{ fontSize: '11px', color: '#64748b' }}>Giorni pagamento</span>
                 <span style={{ fontSize: '13px', fontWeight: 500, color: '#0f172a' }}>{fmtNum(orePag / 8)}</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+              {!isClienteView && <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                 <span style={{ fontSize: '11px', color: '#64748b' }}>Efficacia</span>
                 <span style={{ fontSize: '13px', fontWeight: 600, color: efficaciaColor(efficacia) }}>
                   {efficacia !== null ? `${fmtNum(efficacia)}%` : '—'}
                 </span>
-              </div>
+              </div>}
             </div>
           </>
         )}
@@ -1078,7 +1365,7 @@ export function ProgettoHome({ commessa, commessaId, tasks, staff, progettoId, i
     <div style={{ flex: 1, overflow: 'auto', padding: isMobile ? '16px' : '24px', background: '#f8fafc', display: 'flex', flexDirection: 'column', gap: '18px' }}>
  
       {/* ── HEADER NAVY SOTTILE ── */}
-      <div style={{ background: '#001d47', borderRadius: '12px', padding: isMobile ? '12px 16px' : '14px 22px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap', flexShrink: 0 }}>
+      <div style={{ background: 'var(--brand-800)', borderRadius: 'var(--radius-lg) var(--radius-lg) 0 0', padding: isMobile ? '12px 16px' : '14px 22px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap', flexShrink: 0 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '3px' }}>
             {commessa?.clientName || '—'}
@@ -1101,40 +1388,31 @@ export function ProgettoHome({ commessa, commessaId, tasks, staff, progettoId, i
               {giorniRim < 0 ? `${Math.abs(giorniRim)}g scaduta` : `${giorniRim}g al termine`}
             </span>
           )}
-          {!isMobile && (
-            <RelazioneProgettoPDF
-              commessa={commessa} tasks={tasks} isReparto={isReparto} reparti={reparti}
-              oreTecCons={oreTecCons} orePagCons={orePagCons} giorniDispCons={giorniDispCons}
-              giorniSvoltiCons={giorniSvoltiCons} giorniResiduiCons={giorniResiduiCons}
-              oreTecSvil={oreTecSvil} orePagSvil={orePagSvil} giorniDispSvil={giorniDispSvil}
-              giorniSvoltiSvil={giorniSvoltiSvil} giorniResiduiSvil={giorniResiduiSvil}
-              bolleConsulenza={bolleConsulenza} bolleSviluppo={bolleSviluppo}
-            />
-          )}
+
         </div>
       </div>
  
       {/* ── CARD PM + TEAM ── */}
       {(pm || teamMembers.length > 0) && (
-        <div style={{ background: '#fff', borderRadius: '14px', border: '0.5px solid #e2e8f0', padding: isMobile ? '14px 16px' : '16px 22px', display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap', boxShadow: '0 2px 4px rgba(0,0,0,0.04)' }}>
+        <div style={{ background: 'var(--color-surface)', borderRadius: '0 0 var(--radius-lg) var(--radius-lg)', padding: isMobile ? '12px 16px' : '12px 22px', display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap', borderBottom: '0.5px solid var(--gray-200)' }}>
           {pm && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <div style={{ width: 36, height: 36, borderRadius: '50%', background: pm.color.bg, color: pm.color.text, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 500, flexShrink: 0 }}>{pm.initials}</div>
               <div>
                 <div style={{ fontSize: '13px', fontWeight: 500, color: '#0f172a' }}>{pm.label}</div>
-                <div style={{ fontSize: '10px', color: '#94a3b8' }}>PM</div>
+                <div style={{ fontSize: '10px', color: 'var(--gray-400)' }}>PM</div>
               </div>
             </div>
           )}
-          {pm && teamMembers.length > 0 && <div style={{ width: 1, height: 28, background: '#e2e8f0', flexShrink: 0 }} />}
+          {pm && teamMembers.length > 0 && <div style={{ width: 1, height: 28, background: 'var(--gray-200)', flexShrink: 0 }} />}
           {teamMembers.length > 0 && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <span style={{ fontSize: '10px', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', flexShrink: 0 }}>Team</span>
+              <span style={{ fontSize: '10px', color: 'var(--gray-400)', textTransform: 'uppercase', letterSpacing: '0.06em', flexShrink: 0 }}>Team</span>
               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                 {teamMembers.map((m, i) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
                     <div title={m.label} style={{ width: 30, height: 30, borderRadius: '50%', background: m.color.bg, color: m.color.text, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 500, border: `1px solid ${m.color.text}22`, flexShrink: 0 }}>{m.initials}</div>
-                    <span style={{ fontSize: '12px', color: '#475569' }}>{m.label}</span>
+                    <span style={{ fontSize: '12px', color: 'var(--gray-700)' }}>{m.label}</span>
                   </div>
                 ))}
               </div>
@@ -1181,8 +1459,8 @@ export function ProgettoHome({ commessa, commessaId, tasks, staff, progettoId, i
           </div>
         </div>
  
-        {/* Economico */}
-        <div style={{ background: '#fff', borderRadius: '12px', border: `0.5px solid ${margine >= 0 && valoreProgetto > 0 ? '#C0DD97' : valoreProgetto === 0 ? '#e2e8f0' : '#fecaca'}`, padding: '16px 18px', boxShadow: '0 2px 4px rgba(0,0,0,0.06)', gridColumn: isMobile ? '1' : 'auto' }}>
+        {/* Economico — nascosto in cliente */}
+        {!isClienteView && (<div style={{ background: '#fff', borderRadius: '12px', border: `0.5px solid ${margine >= 0 && valoreProgetto > 0 ? '#C0DD97' : valoreProgetto === 0 ? '#e2e8f0' : '#fecaca'}`, padding: '16px 18px', boxShadow: '0 2px 4px rgba(0,0,0,0.06)', gridColumn: isMobile ? '1' : 'auto' }}>
           <div style={{ fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '12px' }}>Economico</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
@@ -1206,7 +1484,7 @@ export function ProgettoHome({ commessa, commessaId, tasks, staff, progettoId, i
               </span>
             </div>
           </div>
-        </div>
+        </div>)}
       </div>
  
       {/* ── RIEPILOGO ATTIVITÀ + ORDINI CLIENTE ── */}
@@ -1367,7 +1645,7 @@ export function ProgettoHome({ commessa, commessaId, tasks, staff, progettoId, i
         return (
           <div className="modal-overlay" onClick={() => setBollaSelezionata(null)}>
             <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: '16px', width: '100%', maxWidth: '420px', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.2)', position: 'relative' }}>
-              <div style={{ background: '#001d47', padding: '22px 24px 20px', position: 'relative' }}>
+              <div style={{ background: 'var(--brand-800)', padding: '22px 24px 20px', position: 'relative' }}>
                 <button onClick={() => setBollaSelezionata(null)} style={{ position: 'absolute', top: 14, right: 14, background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '6px', color: '#fff', cursor: 'pointer', fontSize: '14px', width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>×</button>
                 <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '10px' }}>Bolla di lavoro</div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
@@ -2240,7 +2518,7 @@ export function ConsuntiviView({ progettoId, commessaId }) {
   );
 }
 
-export function TaskModal({ task, reparti, defaultReparto, defaultParentId, onSave, onClose, clientName, readOnly = false }) {
+export function TaskModal({ task, reparti, defaultReparto, defaultParentId, onSave, onClose, clientName, readOnly = false, staff = [] }) {
   const [f, setF] = useState({
     id: task?.id || null,
     reparto: task?.reparto || defaultReparto || '',
@@ -2256,17 +2534,30 @@ export function TaskModal({ task, reparti, defaultReparto, defaultParentId, onSa
     parent_id: task?.parent_id || defaultParentId || null,
     task_id_display: task?.task_id_display || '',
     ordine: task?.ordine || 0,
+    task_owner: task?.task_owner || null,
   });
   const [saving, setSaving] = useState(false);
   const inp = readOnly ? { disabled: true } : {};
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={e => e.stopPropagation()} style={{ position: 'relative', width: '100%', maxWidth: '560px' }}>
+      <div className="modal-content" onClick={e => e.stopPropagation()} style={{ position: 'relative', width: '100%', maxWidth: '560px', overflow: 'hidden' }}>
+        {/* Banner obliquo TASK — angolo in alto a sinistra */}
+        <div style={{ position: 'absolute', top: 0, left: 0, width: 96, height: 96, zIndex: 10, pointerEvents: 'none' }}>
+          <svg width="96" height="96" viewBox="0 0 96 96" xmlns="http://www.w3.org/2000/svg">
+            <polygon points="0,0 80,0 0,80" fill="var(--brand-800, #001d47)" />
+            <text
+              x="26" y="26"
+              transform="rotate(-45, 26, 26)"
+              fontSize="10" fontWeight="800" fill="white"
+              fontFamily="IBM Plex Sans, sans-serif"
+              letterSpacing="1.5" textAnchor="middle" dominantBaseline="middle">TASK</text>
+          </svg>
+        </div>
         <button className="btn-close-circle" onClick={onClose}>×</button>
-        <div className="modal-header" style={{ paddingRight: '44px' }}>
-          <h3>{readOnly ? 'Dettaglio task' : task ? 'Modifica task' : 'Nuovo task'}</h3>
-          {readOnly && task?.attivita_id && <div style={{ fontSize: '11px', color: '#0F6E56', background: '#f0fdf8', border: '0.5px solid #9FE1CB', borderRadius: '6px', padding: '3px 10px', display: 'inline-block', marginTop: 4 }}>🔗 Sincronizzato da workflow sviluppo</div>}
+        <div className="modal-header" style={{ paddingRight: '44px', paddingLeft: '52px' }}>
+          <h3>{readOnly ? 'Dettaglio' : task ? 'Modifica' : 'Nuovo task'}</h3>
+          {readOnly && task?.attivita_id && <div style={{ fontSize: '11px', color: 'var(--brand-700, #0054a6)', background: 'var(--brand-50, #f0f6ff)', border: '0.5px solid var(--brand-100, #bfdbfe)', borderRadius: '6px', padding: '3px 10px', display: 'inline-block', marginTop: 4 }}>🔗 Sincronizzato da workflow sviluppo</div>}
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
           <div className="form-group" style={{ marginBottom: 0 }}>
@@ -2281,13 +2572,25 @@ export function TaskModal({ task, reparti, defaultReparto, defaultParentId, onSa
             <label>Attività <span style={{ color: '#dc2626' }}>*</span></label>
             <input value={f.attivita} onChange={e => setF({ ...f, attivita: e.target.value })} placeholder="Descrivi l'attività..." autoFocus />
           </div>
+          <div className="form-group" style={{ marginBottom: 0, gridColumn: '1 / -1' }}>
+            <label>Note</label>
+            <input value={f.note} onChange={e => !readOnly && setF({ ...f, note: e.target.value })} placeholder="Note aggiuntive..." {...inp} />
+          </div>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label>Step</label>
+            <div style={{ display: 'flex', gap: '6px' }}>
+              {[1,2,3].map(s => (
+                <div key={s} onClick={() => setF({ ...f, step: s })} style={{ width: 36, height: 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontWeight: 700, fontSize: '14px', border: '1px solid', background: f.step === s ? '#0054a6' : '#f8fafc', borderColor: f.step === s ? '#0054a6' : '#e2e8f0', color: f.step === s ? '#fff' : '#64748b', transition: 'all 0.15s', userSelect: 'none' }}>{s}</div>
+              ))}
+            </div>
+          </div>
           <div className="form-group" style={{ marginBottom: 0 }}>
             <label>Priorità</label>
             <div style={{ display: 'flex', gap: '6px' }}>
               {['bassa','media','alta'].map(p => {
                 const pc = PRIORITA_COLORS[p];
                 return (
-                  <div key={p} onClick={() => setF({ ...f, priorita: p })} style={{ flex: 1, textAlign: 'center', padding: '7px', borderRadius: '8px', cursor: 'pointer', border: `1px solid ${f.priorita === p ? pc.border : '#e2e8f0'}`, background: f.priorita === p ? pc.bg : '#f8fafc', color: f.priorita === p ? pc.text : '#64748b', fontSize: '12px', fontWeight: f.priorita === p ? 700 : 400, transition: 'all 0.15s', userSelect: 'none', textTransform: 'capitalize' }}>{p}</div>
+                  <div key={p} onClick={() => !readOnly && setF({ ...f, priorita: p })} style={{ flex: 1, textAlign: 'center', padding: '7px', borderRadius: '8px', cursor: 'pointer', border: `1px solid ${f.priorita === p ? pc.border : '#e2e8f0'}`, background: f.priorita === p ? pc.bg : '#f8fafc', color: f.priorita === p ? pc.text : '#64748b', fontSize: '12px', fontWeight: f.priorita === p ? 700 : 400, transition: 'all 0.15s', userSelect: 'none', textTransform: 'capitalize' }}>{p}</div>
                 );
               })}
             </div>
@@ -2301,12 +2604,17 @@ export function TaskModal({ task, reparti, defaultReparto, defaultParentId, onSa
             <SelectDropdown options={IN_CARICO_OPTIONS.map(s => ({ value: s, label: s === 'CLIENTE' && clientName ? clientName : s === 'ZCS/CLIENTE' && clientName ? `ZCS/${clientName}` : s }))} value={f.in_carico_a} onChange={v => setF({ ...f, in_carico_a: v })} />
           </div>
           <div className="form-group" style={{ marginBottom: 0 }}>
-            <label>Step</label>
-            <div style={{ display: 'flex', gap: '6px' }}>
-              {[1,2,3].map(s => (
-                <div key={s} onClick={() => setF({ ...f, step: s })} style={{ width: 36, height: 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontWeight: 700, fontSize: '14px', border: '1px solid', background: f.step === s ? '#0054a6' : '#f8fafc', borderColor: f.step === s ? '#0054a6' : '#e2e8f0', color: f.step === s ? '#fff' : '#64748b', transition: 'all 0.15s', userSelect: 'none' }}>{s}</div>
-              ))}
-            </div>
+            <label>Assegnato a</label>
+            <SelectDropdown
+              options={[{ value: '', label: '— nessuno —' }, ...staff.map(s => {
+                const nome = s.cognome && s.nome ? `${s.cognome} ${s.nome}` : (s.nome || s.cognome || String(s));
+                const key = s.cognome && s.nome ? `${s.cognome} ${s.nome}` : nome;
+                return { value: key, label: nome };
+              })]}
+              value={f.task_owner || ''}
+              onChange={v => !readOnly && setF({ ...f, task_owner: v || null })}
+              disabled={readOnly}
+            />
           </div>
           <div className="form-group" style={{ marginBottom: 0 }}>
             <label>Previsto</label>
@@ -2326,10 +2634,6 @@ export function TaskModal({ task, reparti, defaultReparto, defaultParentId, onSa
                 — (valorizzata alla chiusura)
               </div>
             )}
-          </div>
-          <div className="form-group" style={{ marginBottom: 0, gridColumn: '1 / -1' }}>
-            <label>Note</label>
-            <input value={f.note} onChange={e => !readOnly && setF({ ...f, note: e.target.value })} placeholder="Note aggiuntive..." {...inp} />
           </div>
         </div>
         <div className="modal-actions" style={{ marginTop: '24px' }}>

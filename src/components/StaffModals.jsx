@@ -9,10 +9,10 @@ const RUOLI_CON_TEAM = ['Programmatore', 'Analista'];
 // ─────────────────────────────────────────────
 // ManageStaffModal — lista + tab Ruoli + tab Team
 // ─────────────────────────────────────────────
-export function ManageStaffModal({ staff, onClose, isAdmin }) {
+export function ManageStaffModal({ staff, onClose, isAdmin, initialEditTarget = null, initialShowNew = false }) {
   const [search, setSearch] = useState('');
-  const [editTarget, setEditTarget] = useState(null);
-  const [showNew, setShowNew] = useState(false);
+  const [editTarget, setEditTarget] = useState(initialEditTarget);
+  const [showNew, setShowNew] = useState(initialShowNew);
   const [activeTab, setActiveTab] = useState('risorse'); // 'risorse' | 'ruoli' | 'team'
 
   // Config ruoli
@@ -80,6 +80,15 @@ export function ManageStaffModal({ staff, onClose, isAdmin }) {
   };
 
   if (editTarget !== null || showNew) {
+    const fromConfig = initialEditTarget !== null || initialShowNew;
+    // Aspetta che i ruoli siano caricati prima di mostrare il form
+    if (ruoliConfig.length === 0) return (
+      <div className="modal-overlay">
+        <div className="modal-content" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 200 }}>
+          <div style={{ fontSize: 13, color: '#94a3b8' }}>Caricamento…</div>
+        </div>
+      </div>
+    );
     return (
       <StaffFormModal
         staff={editTarget}
@@ -87,7 +96,7 @@ export function ManageStaffModal({ staff, onClose, isAdmin }) {
         ruoliConfig={ruoliConfig}
         teamConfig={teamConfig}
         onClose={() => { setEditTarget(null); setShowNew(false); onClose(); }}
-        onBack={() => { setEditTarget(null); setShowNew(false); }}
+        onBack={fromConfig ? () => { setEditTarget(null); setShowNew(false); onClose(); } : () => { setEditTarget(null); setShowNew(false); }}
       />
     );
   }
@@ -243,6 +252,7 @@ export function StaffFormModal({ staff: s, onClose, onBack, isAdmin, ruoliConfig
   const [cognome, setCognome] = useState(s?.cognome || '');
   const [ruolo, setRuolo] = useState(s?.ruolo || 'Consulente');
   const [email, setEmail] = useState(s?.email || '');
+  const [genere, setGenere] = useState(s?.genere || 'M');
   const [staffIsAdmin, setStaffIsAdmin] = useState(s?.is_admin || false);
   const [teamProdotto, setTeamProdotto] = useState(s?.team_prodotto || '');
   const [saving, setSaving] = useState(false);
@@ -281,6 +291,7 @@ export function StaffFormModal({ staff: s, onClose, onBack, isAdmin, ruoliConfig
       ruolo,
       email: email.trim() || null,
       is_admin: staffIsAdmin,
+      genere,
       team_prodotto: showTeam && teamProdotto ? teamProdotto : null,
     };
     if (isEdit) {
@@ -385,7 +396,22 @@ export function StaffFormModal({ staff: s, onClose, onBack, isAdmin, ruoliConfig
             <input type="email" placeholder="mario.rossi@zcscompany.com" value={email} onChange={e => setEmail(e.target.value)} />
           </div>
 
-          {/* Toggle Admin */}
+          {/* Genere */}
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label>Genere</label>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              {[{ val: 'M', label: '♂ Uomo' }, { val: 'F', label: '♀ Donna' }].map(({ val, label }) => (
+                <div key={val} onClick={() => setGenere(val)}
+                  style={{ padding: '7px 20px', borderRadius: '20px', cursor: 'pointer', fontSize: '13px', fontWeight: genere === val ? 600 : 400, userSelect: 'none', transition: 'all 0.15s',
+                    border: `1px solid ${genere === val ? (val === 'F' ? '#fbcfe8' : '#bfdbfe') : '#e2e8f0'}`,
+                    background: genere === val ? (val === 'F' ? '#fdf2f8' : '#eff6ff') : '#f8fafc',
+                    color: genere === val ? (val === 'F' ? '#9d174d' : '#1e40af') : '#64748b',
+                  }}>
+                  {label}
+                </div>
+              ))}
+            </div>
+          </div>
           {isAdmin && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 14px', background: staffIsAdmin ? '#fef9c3' : '#f8fafc', borderRadius: '10px', border: `1px solid ${staffIsAdmin ? '#fde68a' : '#e2e8f0'}`, transition: 'all 0.15s', cursor: 'pointer' }}
               onClick={() => setStaffIsAdmin(v => !v)}>

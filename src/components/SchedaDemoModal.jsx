@@ -253,7 +253,7 @@ function StepIndicator({ current }) {
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, minWidth: 72 }}>
               <div style={{
                 width: 30, height: 30, borderRadius: '50%',
-                background: done ? '#001d47' : active ? '#2563eb' : '#e2e8f0',
+                background: done ? 'var(--brand-800)' : active ? '#2563eb' : '#e2e8f0',
                 color: (done || active) ? '#fff' : '#94a3b8',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: 13, fontWeight: 700, transition: 'all 0.2s',
@@ -261,12 +261,12 @@ function StepIndicator({ current }) {
               }}>
                 {done ? '✓' : i + 1}
               </div>
-              <span style={{ fontSize: 10, fontWeight: active ? 700 : 400, color: active ? '#001d47' : done ? '#64748b' : '#94a3b8', whiteSpace: 'nowrap' }}>
+              <span style={{ fontSize: 10, fontWeight: active ? 700 : 400, color: active ? 'var(--brand-800)' : done ? '#64748b' : '#94a3b8', whiteSpace: 'nowrap' }}>
                 {label}
               </span>
             </div>
             {i < STEPS.length - 1 && (
-              <div style={{ flex: 1, height: 2, background: done ? '#001d47' : '#e2e8f0', marginBottom: 16, transition: 'background 0.2s' }} />
+              <div style={{ flex: 1, height: 2, background: done ? 'var(--brand-800)' : '#e2e8f0', marginBottom: 16, transition: 'background 0.2s' }} />
             )}
           </React.Fragment>
         );
@@ -370,13 +370,13 @@ function FieldText({ label, value, onChange, placeholder, mono }) {
         placeholder={placeholder || ''}
         style={{ padding: '9px 12px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: 13, color: '#0f172a', outline: 'none', background: '#f8fafc', fontFamily: mono ? 'IBM Plex Mono, monospace' : 'IBM Plex Sans, sans-serif', width: '100%', boxSizing: 'border-box', transition: 'border-color 0.15s' }}
         onFocus={e => e.target.style.borderColor = '#2563eb'}
-        onBlur2={e => e.target.style.borderColor = '#e2e8f0'}
+        
       />
     </div>
   );
 }
 
-function StepIntestazione({ data, onChange, staff, onChangeProdotto }) {
+function StepIntestazione({ data, onChange, staff, onChangeProdotto, readOnly }) {
   const consulentiPM = (staff || []).filter(s =>
     ['Consulente', 'PM', 'Project Manager', 'Consulente applicativo'].includes(s.ruolo)
   );
@@ -387,14 +387,15 @@ function StepIntestazione({ data, onChange, staff, onChangeProdotto }) {
   const upd = (key, val) => onChange({ ...data, [key]: val });
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 18, position: 'relative' }}>
+      {readOnly && <div style={{ position: 'absolute', inset: 0, zIndex: 10, cursor: 'not-allowed' }} />}
       {/* PRODOTTO */}
       <div>
         <label style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 8 }}>Prodotto *</label>
         <div style={{ display: 'flex', gap: 10 }}>
           {['Teseo7', 'Cassiopea'].map(p => (
             <button key={p} onClick={() => onChangeProdotto(p)}
-              style={{ flex: 1, padding: '12px 0', borderRadius: 10, border: `2px solid ${data.prodotto === p ? '#001d47' : '#e2e8f0'}`, background: data.prodotto === p ? '#001d47' : '#fff', color: data.prodotto === p ? '#fff' : '#374151', fontSize: 14, fontWeight: data.prodotto === p ? 700 : 500, cursor: 'pointer', transition: 'all 0.15s', fontFamily: 'inherit' }}>
+              style={{ flex: 1, padding: '12px 0', borderRadius: 10, border: `2px solid ${data.prodotto === p ? 'var(--brand-800)' : '#e2e8f0'}`, background: data.prodotto === p ? 'var(--brand-800)' : '#fff', color: data.prodotto === p ? '#fff' : '#374151', fontSize: 14, fontWeight: data.prodotto === p ? 700 : 500, cursor: 'pointer', transition: 'all 0.15s', fontFamily: 'inherit' }}>
               {p}
             </button>
           ))}
@@ -468,7 +469,7 @@ function StepIntestazione({ data, onChange, staff, onChangeProdotto }) {
           <div style={{ display: 'flex', gap: 8 }}>
             {['1°', '2°', '3°'].map(v => (
               <button key={v} onClick={() => upd('demoN', v)}
-                style={{ flex: 1, padding: '9px 0', borderRadius: 8, border: `1.5px solid ${data.demoN === v ? '#001d47' : '#e2e8f0'}`, background: data.demoN === v ? '#001d47' : '#fff', color: data.demoN === v ? '#fff' : '#374151', fontSize: 13, fontWeight: data.demoN === v ? 700 : 400, cursor: 'pointer', transition: 'all 0.15s', fontFamily: 'inherit' }}>
+                style={{ flex: 1, padding: '9px 0', borderRadius: 8, border: `1.5px solid ${data.demoN === v ? 'var(--brand-800)' : '#e2e8f0'}`, background: data.demoN === v ? 'var(--brand-800)' : '#fff', color: data.demoN === v ? '#fff' : '#374151', fontSize: 13, fontWeight: data.demoN === v ? 700 : 400, cursor: 'pointer', transition: 'all 0.15s', fontFamily: 'inherit' }}>
                 {v}
               </button>
             ))}
@@ -484,7 +485,7 @@ function StepIntestazione({ data, onChange, staff, onChangeProdotto }) {
               { val: 'Videocall', icon: 'videocall' },
             ].map(({ val, icon }) => (
               <button key={val} onClick={() => upd('modalita', val)}
-                style={{ flex: 1, padding: '9px 0', borderRadius: 8, border: `1.5px solid ${data.modalita === val ? '#001d47' : '#e2e8f0'}`, background: data.modalita === val ? '#001d47' : '#fff', color: data.modalita === val ? '#fff' : '#374151', fontSize: 13, fontWeight: data.modalita === val ? 700 : 400, cursor: 'pointer', transition: 'all 0.15s', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
+                style={{ flex: 1, padding: '9px 0', borderRadius: 8, border: `1.5px solid ${data.modalita === val ? 'var(--brand-800)' : '#e2e8f0'}`, background: data.modalita === val ? 'var(--brand-800)' : '#fff', color: data.modalita === val ? '#fff' : '#374151', fontSize: 13, fontWeight: data.modalita === val ? 700 : 400, cursor: 'pointer', transition: 'all 0.15s', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
                 {icon === 'presenza'
                   ? <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/><circle cx="19" cy="7" r="2"/><path d="M23 21v-1a3 3 0 0 0-2-2.8"/></svg>
                   : <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
@@ -658,7 +659,7 @@ function StepModuli({ selezione, setSelezione, giornate, setGiornate, noteArea, 
             <button onClick={() => setSearch('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: 15, lineHeight: 1, padding: 0 }}>×</button>
           )}
         </div>
-        <div style={{ background: '#001d47', borderRadius: 8, padding: '8px 16px', color: '#fff', fontSize: 13, fontWeight: 700, flexShrink: 0, whiteSpace: 'nowrap', fontFamily: 'IBM Plex Mono, monospace' }}>
+        <div style={{ background: 'var(--brand-800)', borderRadius: 8, padding: '8px 16px', color: '#fff', fontSize: 13, fontWeight: 700, flexShrink: 0, whiteSpace: 'nowrap', fontFamily: 'IBM Plex Mono, monospace' }}>
           {selezione.size} mod · {totGiornate.toFixed(1)} gg
         </div>
       </div>
@@ -769,8 +770,17 @@ function StepSistemistica({ data, onChange }) {
     { val: 'Cloud SaaS',      icon: 'cloud',   desc: 'Software as a Service in ambiente multi-tenant condiviso' },
   ];
   const iconaSistemistica = (icon) => {
-    if (icon === 'locale') return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3H8a2 2 0 0 0-2 2v2h12V5a2 2 0 0 0-2-2z"/><line x1="12" y1="12" x2="12" y2="17"/><line x1="9.5" y1="14.5" x2="14.5" y2="14.5"/></svg>;
-    if (icon === 'server') return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>;
+    // Locale → icona server rack (blade server)
+    if (icon === 'locale') return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>;
+    // Cloud Server dedicato → server rack + nuvoletta sovrapposta
+    if (icon === 'server') return (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <rect x="2" y="10" width="20" height="7" rx="2"/>
+        <line x1="6" y1="13.5" x2="6.01" y2="13.5"/>
+        <path d="M7 10c0-2.5 1.8-4.5 4-4.5 1.4 0 2.6.7 3.3 1.8A3.5 3.5 0 0 1 17.5 10"/>
+      </svg>
+    );
+    // Cloud SaaS → nuvoletta piena
     return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>;
   };
   return (
@@ -782,13 +792,13 @@ function StepSistemistica({ data, onChange }) {
             const sel = data.installazione === val;
             return (
               <div key={val} onClick={() => upd('installazione', val)}
-                style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px', borderRadius: 10, border: `1.5px solid ${sel ? '#001d47' : '#e2e8f0'}`, background: sel ? '#f0f4ff' : '#fff', cursor: 'pointer', transition: 'all 0.15s' }}>
-                <div style={{ width: 18, height: 18, borderRadius: '50%', border: `2.5px solid ${sel ? '#001d47' : '#cbd5e1'}`, background: sel ? '#001d47' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px', borderRadius: 10, border: `1.5px solid ${sel ? 'var(--brand-800)' : '#e2e8f0'}`, background: sel ? '#f0f4ff' : '#fff', cursor: 'pointer', transition: 'all 0.15s' }}>
+                <div style={{ width: 18, height: 18, borderRadius: '50%', border: `2.5px solid ${sel ? 'var(--brand-800)' : '#cbd5e1'}`, background: sel ? 'var(--brand-800)' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   {sel && <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#fff' }} />}
                 </div>
-                <span style={{ color: sel ? '#001d47' : '#64748b', flexShrink: 0, display: 'flex' }}>{iconaSistemistica(icon)}</span>
+                <span style={{ color: sel ? 'var(--brand-800)' : '#64748b', flexShrink: 0, display: 'flex' }}>{iconaSistemistica(icon)}</span>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 14, fontWeight: sel ? 700 : 500, color: sel ? '#001d47' : '#374151' }}>{val}</div>
+                  <div style={{ fontSize: 14, fontWeight: sel ? 700 : 500, color: sel ? 'var(--brand-800)' : '#374151' }}>{val}</div>
                   <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>{desc}</div>
                 </div>
               </div>
@@ -818,7 +828,7 @@ function StepSintesi({ intestazione, cliente, selezione, giornate, noteArea, sis
   const areeUsate = [...new Set(moduliSel.map(m => m.area))];
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14, fontSize: 13 }}>
-      <div style={{ background: '#001d47', borderRadius: 10, padding: '14px 18px', color: '#fff' }}>
+      <div style={{ background: 'var(--brand-800)', borderRadius: 10, padding: '14px 18px', color: '#fff' }}>
         <div style={{ fontSize: 17, fontWeight: 800 }}>{cliente.azienda || '—'}</div>
         <div style={{ fontSize: 12, opacity: 0.7, marginTop: 3 }}>
           {fmtDate(intestazione.data)} · Demo {intestazione.demoN || '—'} · {intestazione.modalita || '—'} · Pratica {intestazione.pratica || '—'}
@@ -837,12 +847,12 @@ function StepSintesi({ intestazione, cliente, selezione, giornate, noteArea, sis
         </div>
         <div style={{ background: '#eff6ff', borderRadius: 8, padding: '10px 14px', border: '1px solid #bfdbfe' }}>
           <div style={{ fontSize: 10, fontWeight: 700, color: '#1d4ed8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Moduli selezionati</div>
-          <div style={{ fontSize: 20, fontWeight: 800, color: '#001d47' }}>{moduliSel.length}</div>
+          <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--brand-800)' }}>{moduliSel.length}</div>
           <div style={{ fontSize: 11, color: '#64748b' }}>in {areeUsate.length} aree</div>
         </div>
         <div style={{ background: '#f0fdf4', borderRadius: 8, padding: '10px 14px', border: '1px solid #bbf7d0' }}>
           <div style={{ fontSize: 10, fontWeight: 700, color: '#16a34a', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Giornate totali</div>
-          <div style={{ fontSize: 20, fontWeight: 800, color: '#001d47', fontFamily: 'IBM Plex Mono, monospace' }}>{totGiornate.toFixed(1)}</div>
+          <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--brand-800)', fontFamily: 'IBM Plex Mono, monospace' }}>{totGiornate.toFixed(1)}</div>
           <div style={{ fontSize: 11, color: '#64748b' }}>
             {intestazione.numUtenti ? `da listino · ${intestazione.numUtenti} utenti` : 'da listino'}
           </div>
@@ -971,15 +981,16 @@ ${sistemistica.note?`<div class="box" style="margin-top:10px"><div class="lbl">N
 // ─────────────────────────────────────────────
 // MODALE PRINCIPALE
 // ─────────────────────────────────────────────
-export function SchedaDemoModal({ onClose, moduli: moduliEsterni, staff }) {
+export function SchedaDemoModal({ onClose, moduli: moduliEsterni, staff, preData, initialData, readOnly: readOnlyProp = false }) {
+  const [readOnly, setReadOnly] = useState(readOnlyProp);
   const [step, setStep] = useState(0);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
-  const [intestazione, setIntestazione] = useState({ data: new Date().toISOString().slice(0, 10), demoN: '1°', modalita: 'Videocall', prodotto: 'Teseo7' });
+  const [intestazione, setIntestazione] = useState(() => initialData?.intestazione || { data: new Date().toISOString().slice(0, 10), demoN: '1°', modalita: 'Videocall', prodotto: 'Teseo7' });
   const [cliente, setCliente] = useState({ persone: [] });
-  const [selezione, setSelezione] = useState(new Set());
-  const [giornate, setGiornate] = useState({});
-  const [noteArea, setNoteArea] = useState({});
-  const [sistemistica, setSistemistica] = useState({});
+  const [selezione, setSelezione] = useState(() => new Set(initialData?.selezione || []));
+  const [giornate, setGiornate] = useState(() => initialData?.giornate || {});
+  const [noteArea, setNoteArea] = useState(() => initialData?.noteArea || {});
+  const [sistemistica, setSistemistica] = useState(() => initialData?.sistemistica || {});
 
   const [moduliDB, setModuliDB] = useState(null);
 
@@ -987,18 +998,19 @@ export function SchedaDemoModal({ onClose, moduli: moduliEsterni, staff }) {
     const prodotto = intestazione.prodotto || 'Teseo7';
     const numUtenti = parseInt(intestazione.numUtenti) || 0;
 
-    supabase.from('listino_moduli').select('*, listino_fasce(*)')
+    supabase.from('listino_moduli').select('*, listino_fasce(id, utenti_max, gg)')
       .eq('prodotto', prodotto).order('area').order('ordine')
       .then(({ data }) => {
         if (data && data.length > 0) {
           setModuliDB(data.map(m => {
-            // Calcola gg in base a fasce + numero utenti
-            let gg = m.gg_default || 0.5;
+            let gg = parseFloat(m.gg_default) || 0.5;
             if (numUtenti > 0 && m.listino_fasce && m.listino_fasce.length > 0) {
-              const fasceSorted = [...m.listino_fasce].sort((a, b) => a.utenti_max - b.utenti_max);
-              // Prende la prima fascia con utenti_max >= numUtenti
+              const fasceSorted = [...m.listino_fasce]
+                .map(f => ({ ...f, utenti_max: Number(f.utenti_max), gg: Number(f.gg) }))
+                .sort((a, b) => a.utenti_max - b.utenti_max);
               const fascia = fasceSorted.find(f => f.utenti_max >= numUtenti)
-                          || fasceSorted[fasceSorted.length - 1]; // altrimenti l'ultima (più grande)
+                          || fasceSorted[fasceSorted.length - 1];
+
               if (fascia) gg = fascia.gg;
             }
             return {
@@ -1018,7 +1030,7 @@ export function SchedaDemoModal({ onClose, moduli: moduliEsterni, staff }) {
   const areeOrdinate = intestazione.prodotto === 'Cassiopea' ? AREE_CASSIOPEA : AREE_ORDINATE;
   const areaColors = intestazione.prodotto === 'Cassiopea' ? AREA_COLORS_CASSIOPEA : AREA_COLORS;
 
-  const handleOverlayClick = () => setShowExitConfirm(true);
+  const handleOverlayClick = () => { if (readOnly) { onClose(); } else { setShowExitConfirm(true); } };
 
   const handleChangeProdotto = (p) => {
     setIntestazione(prev => ({ ...prev, prodotto: p }));
@@ -1042,7 +1054,7 @@ export function SchedaDemoModal({ onClose, moduli: moduliEsterni, staff }) {
       {showExitConfirm && (
         <div onClick={e => e.stopPropagation()} style={{ position: 'fixed', inset: 0, background: 'rgba(0,18,41,0.65)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
           <div style={{ background: '#fff', borderRadius: 16, width: 400, maxWidth: '90vw', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
-            <div style={{ background: '#001d47', padding: '18px 24px' }}>
+            <div style={{ background: 'var(--brand-800)', padding: '18px 24px' }}>
               <div style={{ fontSize: 15, fontWeight: 700, color: '#fff' }}>Uscire dalla Scheda Demo — {intestazione.prodotto || 'Teseo7'}?</div>
               <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.65)', marginTop: 4 }}>Il documento non è stato esportato e andrà perso.</div>
             </div>
@@ -1061,41 +1073,80 @@ export function SchedaDemoModal({ onClose, moduli: moduliEsterni, staff }) {
       )}
       <div className="modal-content" onClick={e => e.stopPropagation()}
         style={{ position: 'relative', width: '800px', maxWidth: '96vw', minHeight: '580px', display: 'flex', flexDirection: 'column', maxHeight: '92vh' }}>
-        <button className="btn-close-circle" onClick={() => setShowExitConfirm(true)}>×</button>
+        <button className="btn-close-circle" onClick={() => readOnly ? onClose() : setShowExitConfirm(true)}>×</button>
         <div className="modal-header" style={{ paddingRight: 44 }}>
           <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <rect x="2" y="3" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/>
             <polyline points="6 9 9 12 13 8 16 11"/>
           </svg>
-          Nuova Scheda Demo — {intestazione.prodotto || 'Teseo7'}
-        </h3>
+          {readOnly ? (cliente?.azienda ? `Scheda Demo — ${cliente.azienda}` : `Scheda Demo — ${intestazione.prodotto || 'Teseo7'}`) : `Nuova Scheda Demo — ${intestazione.prodotto || 'Teseo7'}`}
+          </h3>
+          {readOnly && (
+            <span style={{ fontSize: 10, fontWeight: 700, color: '#64748b', background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: 20, padding: '3px 10px', textTransform: 'uppercase', letterSpacing: '0.05em', marginRight: 44 }}>
+              Sola lettura
+            </span>
+          )}
         </div>
         <StepIndicator current={step} />
         <div style={{ flex: 1, overflowY: step === 0 ? 'visible' : 'auto', paddingRight: 2, overflow: step === 0 ? 'visible' : undefined }}>
-          {step === 0 && <StepIntestazione data={intestazione} onChange={setIntestazione} staff={staff} onChangeProdotto={handleChangeProdotto} />}
-          {step === 1 && <StepCliente data={cliente} onChange={setCliente} />}
-          {step === 2 && <StepModuli selezione={selezione} setSelezione={setSelezione} giornate={giornate} setGiornate={setGiornate} noteArea={noteArea} setNoteArea={setNoteArea} moduli={moduli} areeOrdinate={areeOrdinate} areaColors={areaColors} />}
-          {step === 3 && <StepSistemistica data={sistemistica} onChange={setSistemistica} />}
+          {step === 0 && <StepIntestazione data={intestazione} onChange={readOnly ? () => {} : setIntestazione} staff={staff} onChangeProdotto={readOnly ? () => {} : handleChangeProdotto} readOnly={readOnly} />}
+          {step === 1 && <StepCliente data={cliente} onChange={readOnly ? () => {} : setCliente} readOnly={readOnly} />}
+          {step === 2 && <StepModuli selezione={selezione} setSelezione={readOnly ? () => {} : setSelezione} giornate={giornate} setGiornate={readOnly ? () => {} : setGiornate} noteArea={noteArea} setNoteArea={readOnly ? () => {} : setNoteArea} moduli={moduli} areeOrdinate={areeOrdinate} areaColors={areaColors} readOnly={readOnly} />}
+          {step === 3 && <StepSistemistica data={sistemistica} onChange={readOnly ? () => {} : setSistemistica} readOnly={readOnly} />}
           {step === 4 && <StepSintesi intestazione={intestazione} cliente={cliente} selezione={selezione} giornate={giornate} noteArea={noteArea} sistemistica={sistemistica} moduli={moduli} areaColors={areaColors} />}
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 20, paddingTop: 14, borderTop: '1px solid #e2e8f0' }}>
-          <button onClick={() => step === 0 ? setShowExitConfirm(true) : setStep(s => s - 1)}
+          <button onClick={() => step === 0 ? (readOnly ? onClose() : setShowExitConfirm(true)) : setStep(s => s - 1)}
             style={{ padding: '9px 20px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', color: '#64748b', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
-            {step === 0 ? 'Annulla' : '← Indietro'}
+            {step === 0 ? (readOnly ? 'Chiudi' : 'Annulla') : '← Indietro'}
           </button>
           <div style={{ display: 'flex', gap: 8 }}>
-            {step === 4 && (
+            {/* Export sempre visibili */}
+            <button onClick={() => exportExcel(exportData)} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '9px 14px', borderRadius: 8, border: '1px solid #bbf7d0', background: '#f0fdf4', color: '#16a34a', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="11" x2="12" y2="19"/><line x1="8" y1="15" x2="16" y2="15"/></svg> Excel</button>
+            <button onClick={() => exportPDF(exportData)} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '9px 14px', borderRadius: 8, border: '1px solid #fecaca', background: '#fff5f5', color: '#dc2626', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg> PDF</button>
+
+            {/* SOLA LETTURA: Modifica da subito + Avanti */}
+            {readOnly && (
               <>
-                <button onClick={() => exportExcel(exportData)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 18px', borderRadius: 8, border: '1px solid #bbf7d0', background: '#f0fdf4', color: '#16a34a', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><polyline points="8 13 8 17"/><polyline points="16 13 16 17"/><line x1="12" y1="11" x2="12" y2="19"/><line x1="8" y1="15" x2="16" y2="15"/></svg> Excel</button>
-                <button onClick={() => exportPDF(exportData)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 18px', borderRadius: 8, border: '1px solid #fecaca', background: '#fff5f5', color: '#dc2626', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg> PDF</button>
+                <button onClick={() => setReadOnly(false)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 18px', borderRadius: 8, border: 'none', background: 'var(--brand-800)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                  Modifica
+                </button>
+                {step < 4 && (
+                  <button onClick={() => setStep(s => s + 1)}
+                    style={{ padding: '9px 20px', borderRadius: 8, border: 'none', background: '#f1f5f9', color: '#475569', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                    Avanti →
+                  </button>
+                )}
               </>
             )}
-            {step < 4 && (
-              <button onClick={() => setStep(s => s + 1)} disabled={!canNext()}
-                style={{ padding: '9px 24px', borderRadius: 8, border: 'none', background: canNext() ? '#001d47' : '#e2e8f0', color: canNext() ? '#fff' : '#94a3b8', fontSize: 13, fontWeight: 600, cursor: canNext() ? 'pointer' : 'not-allowed', fontFamily: 'inherit', transition: 'all 0.15s' }}>
-                Avanti →
-              </button>
+
+            {/* EDIT: Salva (da card) + Avanti */}
+            {!readOnly && (
+              <>
+                {preData !== undefined && step === 4 && (
+                  <button onClick={() => {
+                    const datiSalvati = {
+                      intestazione, cliente, sistemistica,
+                      selezione: [...selezione], giornate, noteArea,
+                      titolo: `Scheda Demo — ${intestazione.prodotto || 'Teseo7'} · ${cliente.azienda || ''}`.trim(),
+                    };
+                    onClose(datiSalvati);
+                  }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 20px', borderRadius: 8, border: 'none', background: 'var(--brand-800)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                    Salva documento
+                  </button>
+                )}
+                {step < 4 && (
+                  <button onClick={() => setStep(s => s + 1)} disabled={!canNext()}
+                    style={{ padding: '9px 24px', borderRadius: 8, border: 'none', background: canNext() ? 'var(--brand-800)' : '#e2e8f0', color: canNext() ? '#fff' : '#94a3b8', fontSize: 13, fontWeight: 600, cursor: canNext() ? 'pointer' : 'not-allowed', fontFamily: 'inherit', transition: 'all 0.15s' }}>
+                    Avanti →
+                  </button>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -1114,7 +1165,7 @@ export function NuovoDocumentoModal({ onClose, onSchedaDemo, onRaccoltaRequisiti
         style={{ position: 'relative', width: '520px', maxWidth: '96vw', background: '#fff', borderRadius: 16, overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.18)' }}>
 
         {/* Header navy — identico a "Nuova Attività" */}
-        <div style={{ background: '#001d47', padding: '20px 24px', position: 'relative' }}>
+        <div style={{ background: 'var(--brand-800)', padding: '20px 24px', position: 'relative' }}>
           <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>
             NUOVO DOCUMENTO
           </div>

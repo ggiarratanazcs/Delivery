@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { DatePicker } from './DatePicker.jsx';
+import { RaccoltaSemplificata } from './RaccoltaSemplificata.jsx';
 
 // ─────────────────────────────────────────────
 // COSTANTI
@@ -51,7 +52,7 @@ function InfoTooltip({ text }) {
       {show && (
         <div style={{
           position: 'absolute', top: '100%', right: 0, zIndex: 9999,
-          background: '#001d47', color: '#fff', fontSize: 11, lineHeight: 1.5,
+          background: 'var(--brand-800)', color: '#fff', fontSize: 11, lineHeight: 1.5,
           padding: '8px 12px', borderRadius: 8, width: 220,
           boxShadow: '0 4px 16px rgba(0,0,0,0.2)', marginTop: 4,
           whiteSpace: 'normal'
@@ -216,7 +217,7 @@ function StepIndicator({ current }) {
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, minWidth: 72 }}>
               <div style={{
                 width: 30, height: 30, borderRadius: '50%',
-                background: done ? '#001d47' : active ? '#2563eb' : '#e2e8f0',
+                background: done ? 'var(--brand-800)' : active ? '#2563eb' : '#e2e8f0',
                 color: (done || active) ? '#fff' : '#94a3b8',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: 13, fontWeight: 700, transition: 'all 0.2s',
@@ -224,12 +225,12 @@ function StepIndicator({ current }) {
               }}>
                 {done ? '✓' : i + 1}
               </div>
-              <span style={{ fontSize: 10, fontWeight: active ? 700 : 400, color: active ? '#001d47' : done ? '#64748b' : '#94a3b8', whiteSpace: 'nowrap' }}>
+              <span style={{ fontSize: 10, fontWeight: active ? 700 : 400, color: active ? 'var(--brand-800)' : done ? '#64748b' : '#94a3b8', whiteSpace: 'nowrap' }}>
                 {label}
               </span>
             </div>
             {i < STEPS.length - 1 && (
-              <div style={{ flex: 1, height: 2, background: done ? '#001d47' : '#e2e8f0', marginBottom: 16, transition: 'background 0.2s' }} />
+              <div style={{ flex: 1, height: 2, background: done ? 'var(--brand-800)' : '#e2e8f0', marginBottom: 16, transition: 'background 0.2s' }} />
             )}
           </React.Fragment>
         );
@@ -261,7 +262,7 @@ function StepIntestazione({ data, onChange, clients }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {SISTEMI.map(s => (
               <button key={s} onClick={() => upd('sistema', s)}
-                style={{ padding: '8px 12px', borderRadius: 8, border: `1.5px solid ${data.sistema === s ? '#001d47' : '#e2e8f0'}`, background: data.sistema === s ? '#001d47' : '#fff', color: data.sistema === s ? '#fff' : '#374151', fontSize: 13, fontWeight: data.sistema === s ? 700 : 400, cursor: 'pointer', transition: 'all 0.15s', fontFamily: 'inherit', textAlign: 'left' }}>
+                style={{ padding: '8px 12px', borderRadius: 8, border: `1.5px solid ${data.sistema === s ? 'var(--brand-800)' : '#e2e8f0'}`, background: data.sistema === s ? 'var(--brand-800)' : '#fff', color: data.sistema === s ? '#fff' : '#374151', fontSize: 13, fontWeight: data.sistema === s ? 700 : 400, cursor: 'pointer', transition: 'all 0.15s', fontFamily: 'inherit', textAlign: 'left' }}>
                 {s}
               </button>
             ))}
@@ -294,7 +295,7 @@ function StepIntestazione({ data, onChange, clients }) {
         <div style={{ display: 'flex', gap: 8 }}>
           {STATI.map(s => (
             <button key={s.val} onClick={() => upd('stato', s.val)}
-              style={{ flex: 1, padding: '9px 8px', borderRadius: 8, border: `1.5px solid ${data.stato === s.val ? '#001d47' : '#e2e8f0'}`, background: data.stato === s.val ? '#001d47' : '#fff', color: data.stato === s.val ? '#fff' : '#374151', fontSize: 12, fontWeight: data.stato === s.val ? 700 : 400, cursor: 'pointer', transition: 'all 0.15s', fontFamily: 'inherit' }}>
+              style={{ flex: 1, padding: '9px 8px', borderRadius: 8, border: `1.5px solid ${data.stato === s.val ? 'var(--brand-800)' : '#e2e8f0'}`, background: data.stato === s.val ? 'var(--brand-800)' : '#fff', color: data.stato === s.val ? '#fff' : '#374151', fontSize: 12, fontWeight: data.stato === s.val ? 700 : 400, cursor: 'pointer', transition: 'all 0.15s', fontFamily: 'inherit' }}>
               {s.label}
             </button>
           ))}
@@ -307,10 +308,11 @@ function StepIntestazione({ data, onChange, clients }) {
 // ─────────────────────────────────────────────
 // STEP 2 — CONTESTO & ATTORI
 // ─────────────────────────────────────────────
-function StepContesto({ data, onChange }) {
+function StepContesto({ data, onChange, readOnly }) {
   const upd = (k, v) => onChange({ ...data, [k]: v });
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 18, position: 'relative' }}>
+      {readOnly && <div style={{ position: 'absolute', inset: 0, zIndex: 10, cursor: 'not-allowed' }} />}
       <FieldText label="Scopo e Contesto *" rows={5}
         info="Descrivi l'obiettivo del requisito: cosa si vuole realizzare e perché, in quale processo aziendale si inserisce. Evita dettagli tecnici qui — quelli vanno nelle funzionalità."
         value={data.scopo} onChange={v => upd('scopo', v)}
@@ -356,7 +358,7 @@ const CAMPI_FUNZ = [
     placeholder: 'Es. Ndc' },
 ];
 
-function StepFunzionalita({ funzionalita, setFunzionalita }) {
+function StepFunzionalita({ funzionalita, setFunzionalita, readOnly }) {
   const [attiva, setAttiva] = useState(null);
 
   const add = () => {
@@ -409,7 +411,7 @@ function StepFunzionalita({ funzionalita, setFunzionalita }) {
                     {i + 1}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 11, fontWeight: sel ? 700 : 500, color: sel ? '#001d47' : '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <div style={{ fontSize: 11, fontWeight: sel ? 700 : 500, color: sel ? 'var(--brand-800)' : '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {f.nome || <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Senza titolo</span>}
                     </div>
                     {compilati > 0 && (
@@ -470,10 +472,11 @@ function StepFunzionalita({ funzionalita, setFunzionalita }) {
 // ─────────────────────────────────────────────
 // STEP 4 — CONSIDERAZIONI FINALI
 // ─────────────────────────────────────────────
-function StepConsiderazioni({ data, onChange }) {
+function StepConsiderazioni({ data, onChange, readOnly }) {
   const upd = (k, v) => onChange({ ...data, [k]: v });
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 18, position: 'relative' }}>
+      {readOnly && <div style={{ position: 'absolute', inset: 0, zIndex: 10, cursor: 'not-allowed' }} />}
       <FieldText label="Proposta implementativa" rows={4}
         info="Indicazioni su come realizzare tecnicamente il requisito: tabelle da creare, modifiche a maschere esistenti, interfacce con altri moduli. Può rimanere vuoto se non ci sono indicazioni specifiche."
         value={data.proposta} onChange={v => upd('proposta', v)}
@@ -509,7 +512,7 @@ function StepSintesi({ intestazione, contesto, funzionalita, considerazioni }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       {/* Header navy */}
-      <div style={{ background: '#001d47', borderRadius: 10, padding: '14px 18px', color: '#fff' }}>
+      <div style={{ background: 'var(--brand-800)', borderRadius: 10, padding: '14px 18px', color: '#fff' }}>
         <div style={{ fontSize: 11, opacity: 0.6, marginBottom: 3, fontFamily: 'IBM Plex Mono, monospace' }}>{codice}</div>
         <div style={{ fontSize: 17, fontWeight: 800 }}>{intestazione.titolo || '—'}</div>
         <div style={{ fontSize: 12, opacity: 0.7, marginTop: 3 }}>
@@ -546,7 +549,7 @@ function StepSintesi({ intestazione, contesto, funzionalita, considerazioni }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             {funzionalita.map((f, i) => (
               <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: '#fff', borderRadius: 6, border: '1px solid #e2e8f0' }}>
-                <span style={{ width: 20, height: 20, borderRadius: '50%', background: '#001d47', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, flexShrink: 0 }}>{i + 1}</span>
+                <span style={{ width: 20, height: 20, borderRadius: '50%', background: 'var(--brand-800)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, flexShrink: 0 }}>{i + 1}</span>
                 <span style={{ fontSize: 13, color: '#0f172a', fontWeight: 500 }}>{f.nome || <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Senza nome</span>}</span>
                 {f.attore && <span style={{ fontSize: 11, color: '#64748b', marginLeft: 'auto' }}>{f.attore}</span>}
               </div>
@@ -1016,26 +1019,107 @@ ${considerazioni.note ? `<h3>Note aggiuntive</h3><p>${txt(considerazioni.note)}<
 // ─────────────────────────────────────────────
 // MODALE PRINCIPALE
 // ─────────────────────────────────────────────
-export function RaccoltaRequisitiModal({ onClose, staff, clients }) {
+export function RaccoltaRequisitiModal({ onClose, staff, clients, preData, initialData, readOnly: readOnlyProp = false, cardId: cardIdProp = null, currentUser = null }) {
+  const [readOnly, setReadOnly] = useState(readOnlyProp);
+  const [modalita, setModalita] = useState(null);
+  const [selectedCardId, setSelectedCardId] = useState(cardIdProp);
+  // removed duplicate: setModalita] = useState(null); // null = scelta | 'dettagliata' | 'semplificata'
   const [step, setStep] = useState(0);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
-  const [intestazione, setIntestazione] = useState({
-    data: new Date().toISOString().slice(0, 10),
-    versione: '1.0',
-    stato: '1',
-  });
-  const [contesto, setContesto] = useState({});
-  const [funzionalita, setFunzionalita] = useState([]);
-  const [considerazioni, setConsiderazioni] = useState({});
+  const [intestazione, setIntestazione] = useState(() =>
+    initialData?.intestazione || {
+      data: new Date().toISOString().slice(0, 10),
+      versione: '1.0',
+      stato: '1',
+      cliente: preData?.cliente || '',
+      titolo: preData?.titolo || '',
+    }
+  );
+  const [contesto, setContesto] = useState(initialData?.contesto || {});
+  const [funzionalita, setFunzionalita] = useState(initialData?.funzionalita || []);
+  const [considerazioni, setConsiderazioni] = useState(initialData?.considerazioni || {});
   const [exporting, setExporting] = useState(false);
 
-  const handleOverlayClick = () => setShowExitConfirm(true);
+  const handleOverlayClick = () => { if (readOnly) { onClose(); } else { setShowExitConfirm(true); } };
+
+  // ── Scelta modalità ────────────────────────────────────────────
+  if (modalita === null) {
+    return (
+      <div className="modal-overlay" onClick={onClose}>
+        <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 20, width: '100%', maxWidth: 640, boxShadow: '0 32px 64px rgba(0,0,0,0.2)', overflow: 'hidden' }}>
+          <div style={{ background: 'var(--brand-800)', padding: '28px 32px' }}>
+            <div style={{ fontSize: 20, fontWeight: 800, color: '#fff', marginBottom: 6 }}>Raccolta Requisiti</div>
+            <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)' }}>Scegli la modalità di compilazione</div>
+          </div>
+
+          <div style={{ padding: '24px 32px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+
+            {/* Semplificata */}
+            <div onClick={() => setModalita('semplificata')}
+              style={{ border: '2px solid #bfdbfe', borderRadius: 16, padding: '24px 20px', cursor: 'pointer', background: '#fff', transition: 'all 0.15s', display: 'flex', flexDirection: 'column', gap: 14, position: 'relative', overflow: 'hidden' }}
+              onMouseOver={e => { e.currentTarget.style.background = '#eff6ff'; e.currentTarget.style.borderColor = 'var(--brand-700)'; }}
+              onMouseOut={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = '#bfdbfe'; }}>
+              {/* Banner beta */}
+              <div style={{ position: 'absolute', top: 12, right: -20, background: '#f59e0b', color: '#fff', fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '3px 28px', transform: 'rotate(35deg)', boxShadow: '0 1px 4px rgba(0,0,0,0.15)' }}>
+                Beta
+              </div>
+              <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--brand-800)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                <img src="/yoda.png" alt="Yoda" width={36} height={36} style={{ objectFit: 'contain', filter: 'brightness(0) invert(1)' }} />
+              </div>
+              <div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--brand-800)', marginBottom: 6 }}>Guidata con Yoda</div>
+                <div style={{ fontSize: 13, color: '#64748b', lineHeight: 1.6 }}>Yoda ti fa le domande giuste. Rispondi e il documento si costruisce automaticamente.</div>
+              </div>
+              <div style={{ fontSize: 11, color: '#f59e0b', fontWeight: 600, background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                Funzionalità in versione di test
+              </div>
+            </div>
+
+            {/* Dettagliata */}
+            <div onClick={() => setModalita('dettagliata')}
+              style={{ border: '1px solid #e2e8f0', borderRadius: 16, padding: '24px 20px', cursor: 'pointer', background: '#fff', transition: 'all 0.15s', display: 'flex', flexDirection: 'column', gap: 14 }}
+              onMouseOver={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#94a3b8'; }}
+              onMouseOut={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = '#e2e8f0'; }}>
+              <div style={{ width: 48, height: 48, borderRadius: 12, background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+              </div>
+              <div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', marginBottom: 6 }}>Dettagliata</div>
+                <div style={{ fontSize: 13, color: '#64748b', lineHeight: 1.6 }}>Compilazione guidata passo per passo con tutti i campi strutturati. Massimo controllo.</div>
+              </div>
+              <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5 }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                Raccolta requisiti completa
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Modalità semplificata ───────────────────────────────────────
+  if (modalita === 'semplificata') {
+    return <RaccoltaSemplificata onClose={onClose} clients={clients} cardId={selectedCardId} createdBy={currentUser?.nome ? (currentUser.cognome + ' ' + currentUser.nome) : ''} />;
+  }
+
 
     const canNext = () => {
     if (step === 0) return intestazione.cliente?.trim() && intestazione.sistema && intestazione.titolo?.trim();
     if (step === 1) return contesto.scopo?.trim();
     if (step === 2) return true; // funzionalità opzionale per avanzare
     return true;
+  };
+
+  const handleSaveAndExportDocx = async () => {
+    // Salva il documento collegato se siamo in contesto card
+    if (preData !== undefined) {
+      const datiSalvati = { intestazione, contesto, funzionalita, considerazioni,
+        titolo: intestazione.titolo || 'Raccolta Requisiti' };
+      onClose(datiSalvati);
+      return;
+    }
   };
 
   const handleExportDocx = async () => {
@@ -1054,7 +1138,7 @@ export function RaccoltaRequisitiModal({ onClose, staff, clients }) {
       {showExitConfirm && (
         <div onClick={e => e.stopPropagation()} style={{ position: 'fixed', inset: 0, background: 'rgba(0,18,41,0.65)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
           <div style={{ background: '#fff', borderRadius: 16, width: 400, maxWidth: '90vw', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
-            <div style={{ background: '#001d47', padding: '18px 24px' }}>
+            <div style={{ background: 'var(--brand-800)', padding: '18px 24px' }}>
               <div style={{ fontSize: 15, fontWeight: 700, color: '#fff' }}>Uscire dalla Raccolta Requisiti?</div>
               <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.65)', marginTop: 4 }}>Il documento non è stato esportato e andrà perso.</div>
             </div>
@@ -1074,9 +1158,9 @@ export function RaccoltaRequisitiModal({ onClose, staff, clients }) {
       <div className="modal-content" onClick={e => e.stopPropagation()}
         style={{ position: 'relative', width: '820px', maxWidth: '96vw', minHeight: '580px', display: 'flex', flexDirection: 'column', maxHeight: '92vh' }}>
 
-        <button className="btn-close-circle" onClick={() => setShowExitConfirm(true)}>×</button>
+        <button className="btn-close-circle" onClick={() => readOnly ? onClose() : setShowExitConfirm(true)}>×</button>
 
-        <div className="modal-header" style={{ paddingRight: 44 }}>
+        <div className="modal-header" style={{ paddingRight: 44, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
@@ -1084,29 +1168,90 @@ export function RaccoltaRequisitiModal({ onClose, staff, clients }) {
               <line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/>
               <polyline points="9 9 10 10 12 8"/>
             </svg>
-            Nuova Raccolta Requisiti
+            {readOnly ? (intestazione.titolo || 'Raccolta Requisiti') : 'Nuova Raccolta Requisiti'}
           </h3>
+          {readOnly && (
+            <span style={{ fontSize: 10, fontWeight: 700, color: '#64748b', background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: 20, padding: '3px 10px', textTransform: 'uppercase', letterSpacing: '0.05em', marginRight: 44 }}>
+              Sola lettura
+            </span>
+          )}
         </div>
 
         <StepIndicator current={step} />
 
         <div style={{ flex: 1, overflowY: step === 0 ? 'visible' : 'auto', overflow: step === 0 ? 'visible' : undefined, paddingRight: 2 }}>
           {step === 0 && <StepIntestazione data={intestazione} onChange={setIntestazione} clients={clients} />}
-          {step === 1 && <StepContesto data={contesto} onChange={setContesto} />}
-          {step === 2 && <StepFunzionalita funzionalita={funzionalita} setFunzionalita={setFunzionalita} />}
-          {step === 3 && <StepConsiderazioni data={considerazioni} onChange={setConsiderazioni} />}
-          {step === 4 && <StepSintesi intestazione={intestazione} contesto={contesto} funzionalita={funzionalita} considerazioni={considerazioni} />}
+          {step === 1 && <StepContesto data={contesto} onChange={readOnly ? () => {} : setContesto} readOnly={readOnly} />}
+          {step === 2 && <StepFunzionalita funzionalita={funzionalita} setFunzionalita={readOnly ? () => {} : setFunzionalita} readOnly={readOnly} />}
+          {step === 3 && <StepConsiderazioni data={considerazioni} onChange={readOnly ? () => {} : setConsiderazioni} readOnly={readOnly} />}
+          {step === 4 && (
+            <>
+              <StepSintesi intestazione={intestazione} contesto={contesto} funzionalita={funzionalita} considerazioni={considerazioni} />
+              {preData !== undefined && (
+                <div style={{ marginTop: 12, padding: '10px 14px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, fontSize: 12, color: '#15803d', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  Clicca <strong>Salva documento</strong> per archiviarlo nella scheda attività.
+                </div>
+              )}
+            </>
+          )}
         </div>
 
         {/* Footer */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 20, paddingTop: 14, borderTop: '1px solid #e2e8f0' }}>
-          <button onClick={() => step === 0 ? setShowExitConfirm(true) : setStep(s => s - 1)}
+          <button onClick={() => step === 0 ? (readOnly ? onClose() : setShowExitConfirm(true)) : setStep(s => s - 1)}
             style={{ padding: '9px 20px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', color: '#64748b', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
-            {step === 0 ? 'Annulla' : '← Indietro'}
+            {step === 0 ? (readOnly ? 'Chiudi' : 'Annulla') : '← Indietro'}
           </button>
-          <div style={{ display: 'flex', gap: 8 }}>
-            {step === 4 && (
+
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            {/* Modalità SOLA LETTURA — Modifica + export sempre visibili */}
+            {readOnly && (
               <>
+                <button onClick={handleExportDocx} disabled={exporting}
+                  style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '9px 14px', borderRadius: 8, border: '1px solid #bfdbfe', background: '#eff6ff', color: '#1d4ed8', fontSize: 13, fontWeight: 600, cursor: exporting ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: exporting ? 0.7 : 1 }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+                  {exporting ? '…' : 'Word'}
+                </button>
+                <button onClick={handleExportPDF}
+                  style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '9px 14px', borderRadius: 8, border: '1px solid #fecaca', background: '#fff5f5', color: '#dc2626', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                  PDF
+                </button>
+                <button onClick={() => setReadOnly(false)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 20px', borderRadius: 8, border: 'none', background: 'var(--brand-800)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                  </svg>
+                  Modifica
+                </button>
+                {step < 4 && (
+                  <button onClick={() => setStep(s => s + 1)}
+                    style={{ padding: '9px 20px', borderRadius: 8, border: 'none', background: '#f1f5f9', color: '#475569', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                    Avanti →
+                  </button>
+                )}
+              </>
+            )}
+
+            {/* Modalità EDIT */}
+            {!readOnly && step === 4 && (
+              <>
+                {preData !== undefined && (
+                  <button onClick={() => {
+                    const datiSalvati = { intestazione, contesto, funzionalita, considerazioni, titolo: intestazione.titolo || 'Raccolta Requisiti' };
+                    onClose(datiSalvati);
+                  }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 22px', borderRadius: 8, border: 'none', background: 'var(--brand-800)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 2px 8px rgba(0,0,0,0.18)' }}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                      <polyline points="17 21 17 13 7 13 7 21"/>
+                      <polyline points="7 3 7 8 15 8"/>
+                    </svg>
+                    Salva documento
+                  </button>
+                )}
                 <button onClick={handleExportDocx} disabled={exporting}
                   style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 18px', borderRadius: 8, border: '1px solid #bfdbfe', background: '#eff6ff', color: '#1d4ed8', fontSize: 13, fontWeight: 600, cursor: exporting ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: exporting ? 0.7 : 1 }}>
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
@@ -1119,9 +1264,9 @@ export function RaccoltaRequisitiModal({ onClose, staff, clients }) {
                 </button>
               </>
             )}
-            {step < 4 && (
+            {!readOnly && step < 4 && (
               <button onClick={() => setStep(s => s + 1)} disabled={!canNext()}
-                style={{ padding: '9px 24px', borderRadius: 8, border: 'none', background: canNext() ? '#001d47' : '#e2e8f0', color: canNext() ? '#fff' : '#94a3b8', fontSize: 13, fontWeight: 600, cursor: canNext() ? 'pointer' : 'not-allowed', fontFamily: 'inherit', transition: 'all 0.15s' }}>
+                style={{ padding: '9px 24px', borderRadius: 8, border: 'none', background: canNext() ? 'var(--brand-800)' : '#e2e8f0', color: canNext() ? '#fff' : '#94a3b8', fontSize: 13, fontWeight: 600, cursor: canNext() ? 'pointer' : 'not-allowed', fontFamily: 'inherit', transition: 'all 0.15s' }}>
                 Avanti →
               </button>
             )}

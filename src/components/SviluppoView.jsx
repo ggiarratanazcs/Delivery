@@ -107,6 +107,7 @@ function capacityColor(used, total) {
 
 export function SviluppoView({ staff, clients = [], isAdmin = false, filterSearch = '' }) {
   const [reorderInfo, setReorderInfo] = useState(null);
+  const [sviluppoSubTab, setSviluppoSubTab] = useState('workload');
   const [showCompleted, setShowCompleted] = useState(false);
   const [teamDropOpen, setTeamDropOpen] = useState(false);
   const [sviluppoPickerOpen, setSviluppoPickerOpen] = useState(false);
@@ -123,6 +124,7 @@ export function SviluppoView({ staff, clients = [], isAdmin = false, filterSearc
   const [teamConfig, setTeamConfig] = useState([]);
   const [activeTeam, setActiveTeam] = useState('tutti');
   const [simulation, setSimulation] = useState(null);
+  const [showOnlyGroups, setShowOnlyGroups] = useState(false);
   const [saving, setSaving] = useState(false);
   const [dragItem, setDragItem] = useState(null);
   const [colonnaPianificate, setColonnaPianificate] = useState(null);
@@ -150,6 +152,24 @@ export function SviluppoView({ staff, clients = [], isAdmin = false, filterSearc
     } catch (e) {
       console.error('writeLog error:', e);
     }
+  };
+
+  // ── Fetch completo di una card con tutte le relazioni ──────
+  const fetchCardFull = async (id) => {
+    const { data: att } = await supabase
+      .from('attivita')
+      .select('*, commessa:commessa_id(nome_commessa, pm_commessa, client_id), bolla:bolla_id(codice, descrizione)')
+      .eq('id', id)
+      .single();
+    if (!att) return null;
+    const { data: ossRows } = await supabase
+      .from('attivita_osservatori')
+      .select('staff_key')
+      .eq('attivita_id', id);
+    return {
+      ...att,
+      osservatori: (ossRows || []).map(r => r.staff_key),
+    };
   };
 
   const loadData = async () => {
@@ -297,6 +317,7 @@ export function SviluppoView({ staff, clients = [], isAdmin = false, filterSearc
       await writeLog(simulation.attId, 'pianificazione', logDesc);
 
       const savedResId = simulation.resId;
+      const isGroupRes = teamConfig.some(t => t.nome === savedResId);
 
       // Notifica all'assegnatario e agli osservatori
       const testoNotifica = simulation.isReplan
@@ -327,7 +348,7 @@ export function SviluppoView({ staff, clients = [], isAdmin = false, filterSearc
         .not('data_inizio_lavori', 'is', null)
         .not('data_fine_lavori', 'is', null)
         .not('colonna_id', 'in', `(${workflowColonne.filter(c => /complet|annullat|done/i.test(c.nome)).map(c => c.id).join(',') || '0'})`);
-      if (attRisorsa && attRisorsa.length >= 2) {
+      if (!isGroupRes && attRisorsa && attRisorsa.length >= 2) {
         const changes = calcRescheduling(savedResId, attRisorsa);
         if (changes.length > 0) setReschedulePreview({ resId: savedResId, changes });
       }
@@ -340,21 +361,70 @@ export function SviluppoView({ staff, clients = [], isAdmin = false, filterSearc
 
   const handleDrop = (resId, monthKey) => {
     if (!dragItem) return;
-    const cardsInMonth = ((assignedCards[resId] || {})[monthKey] || [])
-      .filter(c => c.attId !== dragItem.id && !c.isCompleted);
-    const lastFine = cardsInMonth
-      .map(c => c.dataFine ? new Date(c.dataFine) : null)
-      .filter(Boolean)
-      .sort((a, b) => b - a)[0] || null;
-    const mObj = getMonths(12).find(m => m.key === monthKey);
-    const wdNelMese = mObj ? mObj.wd : 21;
-    const usedDays = Math.round(((assigned[resId] || {})[monthKey] || 0) / 8);
-    // notBefore: se il mese trascinato è il mese corrente, non iniziare prima di domani
+
+    // Controlla se resId è un gruppo virtuale (nome team)
+    const isGroup = teamConfig.some(t => t.nome === resId);
+
     const today0 = new Date(); today0.setHours(0,0,0,0);
     const tomorrow = new Date(today0); tomorrow.setDate(tomorrow.getDate() + 1);
     const [mkY, mkM] = monthKey.split('-').map(Number);
     const isCurrentMonth = mkY === today0.getFullYear() && mkM === today0.getMonth() + 1;
     const notBefore = isCurrentMonth ? tomorrow : null;
+    const mObj = getMonths(12).find(m => m.key === monthKey);
+    const wdNelMese = mObj ? mObj.wd : 21;
+
+    let lastFine = null;
+    let usedDays = 0;
+
+    if (isGroup) {
+      // Logica parallela per slot gruppo
+      // Quante risorse ha il gruppo?
+      const membriGruppo = filteredStaff.filter(s => s.team_prodotto === resId);
+      const nRisorse = membriGruppo.length || 1;
+
+      // Quante card del gruppo sono attive (si sovrappongono) nel mese selezionato?
+      // Una card è "attiva nel mese" se il suo periodo [dataInizio, dataFine] interseca il mese
+      const [mkY2, mkM2] = monthKey.split('-').map(Number);
+      const meseStart = new Date(mkY2, mkM2 - 1, 1);
+      const meseEnd = new Date(mkY2, mkM2, 0);
+
+      // Raccoglie tutte le card già assegnate al gruppo (da tutte le chiavi mese)
+      const tutteLeCardGruppo = Object.values(assignedCards[resId] || {})
+        .flat()
+        .filter(c => c.attId !== dragItem.id && !c.isCompleted && c.isFirst); // isFirst evita duplicati cross-mese
+
+      // Conta gli slot già occupati = card che si sovrappongono al mese target
+      const slotOccupati = tutteLeCardGruppo.filter(c => {
+        const cStart = c.dataInizio ? new Date(c.dataInizio) : (c.dataFine ? new Date(c.dataFine) : null);
+        const cEnd = c.dataFine ? new Date(c.dataFine) : cStart;
+        if (!cStart || !cEnd) return false;
+        // Intersezione: non (cEnd < meseStart || cStart > meseEnd)
+        return !(cEnd < meseStart || cStart > meseEnd);
+      });
+
+      if (slotOccupati.length < nRisorse) {
+        // C'è ancora uno slot libero → parte dal primo giorno del mese (parallela)
+        lastFine = null;
+      } else {
+        // Tutti gli slot occupati → trova la card che finisce prima (primo slot che si libera)
+        const finiOrdinati = slotOccupati
+          .map(c => c.dataFine ? new Date(c.dataFine) : null)
+          .filter(Boolean)
+          .sort((a, b) => a - b); // crescente: prima che finisce = primo slot libero
+        lastFine = finiOrdinati[0] || null;
+      }
+      usedDays = 0; // non usato nella logica gruppo
+    } else {
+      // Logica sequenziale standard per risorsa singola
+      const cardsInMonth = ((assignedCards[resId] || {})[monthKey] || [])
+        .filter(c => c.attId !== dragItem.id && !c.isCompleted);
+      lastFine = cardsInMonth
+        .map(c => c.dataFine ? new Date(c.dataFine) : null)
+        .filter(Boolean)
+        .sort((a, b) => b - a)[0] || null;
+      usedDays = Math.round(((assigned[resId] || {})[monthKey] || 0) / 8);
+    }
+
     const { inizio, fine } = calcDateLavori(monthKey, dragItem.stima_ore || 8, lastFine, wdNelMese, usedDays, notBefore);
     setSimulation({
       attId: dragItem.id, resId, monthKey,
@@ -488,7 +558,8 @@ export function SviluppoView({ staff, clients = [], isAdmin = false, filterSearc
     setDragItem(null);
     showToast(`"${dragItem.titolo}" riportato in backlog`);
     await loadData();
-    if (savedResId) {
+    const isGroupResBacklog = teamConfig.some(t => t.nome === savedResId);
+    if (savedResId && !isGroupResBacklog) {
       const { data: attRisorsa } = await supabase
         .from('attivita').select('id, titolo, stima_ore, data_inizio_lavori, data_fine_lavori, assegnata_a')
         .eq('assegnata_a', savedResId).not('data_inizio_lavori', 'is', null).not('data_fine_lavori', 'is', null)
@@ -510,6 +581,18 @@ export function SviluppoView({ staff, clients = [], isAdmin = false, filterSearc
       if (b.ruolo === 'Analista' && a.ruolo !== 'Analista') return 1;
       return `${a.cognome} ${a.nome}`.localeCompare(`${b.cognome} ${b.nome}`);
     });
+
+  // Righe virtuali gruppo — una per ogni team, con capacity aggregata
+  const filteredGroups = teamConfig
+    .filter(t => activeTeam === 'tutti' || t.nome === activeTeam)
+    .map(t => ({
+      _isGroup: true,
+      id: `_gruppo_${t.nome}`,
+      nome: t.nome,
+      label: `📦 ${t.nome}`,
+      // staffKey virtuale = nome team
+      staffKeyGroup: t.nome,
+    }));
 
   const filteredBacklog = backlog
     .filter(a => {
@@ -533,20 +616,33 @@ export function SviluppoView({ staff, clients = [], isAdmin = false, filterSearc
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#f8fafc' }}>
 
-      {/* Toolbar principale */}
-      <div style={{ background: '#fff', borderBottom: '0.5px solid #e2e8f0', padding: '8px 16px', display: 'flex', alignItems: 'center', flexShrink: 0, minHeight: 44 }}>
-        {simulation && (
+      {/* Toolbar principale — visibile solo durante simulazione */}
+      {simulation && (
+        <div style={{ background: '#fff', borderBottom: '0.5px solid #e2e8f0', padding: '8px 16px', display: 'flex', alignItems: 'center', flexShrink: 0, minHeight: 44 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: '#0F6E56', background: '#E1F5EE', border: '0.5px solid #9FE1CB', borderRadius: '20px', padding: '4px 12px', flexShrink: 0 }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
             Simulazione attiva — conferma o annulla
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Sub-bar filtri */}
       <div style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', padding: '6px 16px', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:6, fontSize:12 }}>
+          <span onClick={() => setSviluppoSubTab('workload')}
+            style={{ color: sviluppoSubTab==='workload' ? '#185FA5' : 'var(--gray-400,#94a3b8)', fontWeight: sviluppoSubTab==='workload' ? 600 : 400, cursor:'pointer', borderBottom: sviluppoSubTab==='workload' ? '1.5px solid #185FA5' : '1.5px solid transparent', paddingBottom:1, transition:'all .15s' }}>Workload</span>
+          <span style={{ color:'var(--gray-200,#e2e8f0)' }}>/</span>
+          <span onClick={() => setSviluppoSubTab('gantt')}
+            style={{ color: sviluppoSubTab==='gantt' ? '#185FA5' : 'var(--gray-400,#94a3b8)', fontWeight: sviluppoSubTab==='gantt' ? 600 : 400, cursor:'pointer', borderBottom: sviluppoSubTab==='gantt' ? '1.5px solid #185FA5' : '1.5px solid transparent', paddingBottom:1, transition:'all .15s' }}>Gantt</span>
+        </div>
         <div style={{ flex: 1 }} />
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {/* Flag gruppi */}
+          <button onClick={() => setShowOnlyGroups(v => !v)}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 12px', borderRadius: '20px', border: '1px solid', fontSize: '12px', fontWeight: 500, cursor: 'pointer', transition: 'all 0.15s', ...(showOnlyGroups ? { background: '#eff6ff', borderColor: '#bfdbfe', color: '#0054a6' } : { background: '#fff', borderColor: '#e2e8f0', color: '#94a3b8' }) }}>
+            <span style={{ width: 7, height: 7, borderRadius: '50%', background: showOnlyGroups ? '#0054a6' : '#cbd5e1', display: 'block', flexShrink: 0 }} />
+            Gruppi
+          </button>
           {/* Flag completate */}
           <button onClick={() => setShowCompleted(v => !v)}
             style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 12px', borderRadius: '20px', border: '1px solid', fontSize: '12px', fontWeight: 500, cursor: 'pointer', transition: 'all 0.15s', ...(showCompleted ? { background: '#f1f5f9', borderColor: '#94a3b8', color: '#475569' } : { background: '#fff', borderColor: '#e2e8f0', color: '#94a3b8' }) }}>
@@ -619,7 +715,7 @@ export function SviluppoView({ staff, clients = [], isAdmin = false, filterSearc
       </div>
       {teamDropOpen && <div style={{ position: 'fixed', inset: 0, zIndex: 299 }} onClick={() => setTeamDropOpen(false)} />}
 
-      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+      {sviluppoSubTab === 'workload' && <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
 
         {/* Backlog */}
         <div
@@ -649,15 +745,15 @@ export function SviluppoView({ staff, clients = [], isAdmin = false, filterSearc
                   onDragStart={() => { if (!isSimulating) setDragItem(a); }}
                   onDragEnd={() => setDragItem(null)}
                   onClick={async () => {
-                    const { data: fresh } = await supabase.from('attivita').select('*, commessa:commessa_id(nome_commessa, pm_commessa, client_id), bolla:bolla_id(codice, descrizione)').eq('id', a.id).single();
-                    setSelectedCard(fresh || a);
+                    const full = await fetchCardFull(a.id);
+                    setSelectedCard(full || a);
                   }}
                   style={{ background: isSimulating ? '#f0fdf8' : '#fff', border: `0.5px solid ${isSimulating ? '#9FE1CB' : '#e2e8f0'}`, borderRadius: '8px', padding: '9px 10px', cursor: 'pointer', opacity: dragItem?.id === a.id ? 0.4 : 1, transition: 'all 0.12s' }}
                   onMouseOver={e => { e.currentTarget.style.borderColor = '#9FE1CB'; e.currentTarget.style.background = isSimulating ? '#f0fdf8' : '#f8fffe'; }}
                   onMouseOut={e => { e.currentTarget.style.borderColor = isSimulating ? '#9FE1CB' : '#e2e8f0'; e.currentTarget.style.background = isSimulating ? '#f0fdf8' : '#fff'; }}>
                   <div style={{ fontSize: '12px', fontWeight: 500, color: '#0f172a', marginBottom: 6, lineHeight: 1.35 }}>{a.titolo}</div>
                   <div style={{ display: 'flex', gap: '4px', alignItems: 'center', marginBottom: 4, flexWrap: 'wrap' }}>
-                    {a.priorita && <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '4px', fontWeight: 500, background: pc.bg, color: pc.color }}>{a.priorita}</span>}
+                    {a.priorita && <span style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:11, fontWeight:500, color:pc.color }}><span style={{ width:6, height:6, borderRadius:'50%', background:pc.color==='#A32D2D'?'#E24B4A':pc.color==='#633806'?'#BA7517':'#639922', flexShrink:0, display:'inline-block' }} />{a.priorita}</span>}
                     {a.stima_ore && <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '4px', background: '#E6F1FB', color: '#0C447C', fontFamily: 'inherit', fontVariantNumeric: 'tabular-nums', fontWeight: 500 }}>{a.stima_ore}h</span>}
                   </div>
                   {(() => {
@@ -719,10 +815,103 @@ export function SviluppoView({ staff, clients = [], isAdmin = false, filterSearc
 
           {/* Righe risorse */}
           <div style={{ flex: 1, overflow: 'auto' }}>
-            {filteredStaff.length === 0 && (
+            {filteredStaff.length === 0 && filteredGroups.length === 0 && (
               <div style={{ padding: '40px', textAlign: 'center', color: '#94a3b8', fontSize: '13px' }}>Nessuna risorsa trovata</div>
             )}
-            {filteredStaff.map(s => {
+
+            {/* Righe virtuali GRUPPO — sempre in cima */}
+            {filteredGroups.map(g => {
+              const rKey = g.staffKeyGroup;
+              const membriGruppo = filteredStaff.filter(s => s.team_prodotto === g.nome);
+              return (
+                <div key={g.id} style={{ display: 'flex', borderBottom: '1px solid #bfdbfe', background: '#f0f7ff' }}>
+                  {/* Label gruppo */}
+                  <div style={{ width: 140, flexShrink: 0, borderRight: '0.5px solid #bfdbfe', padding: '10px 12px', display: 'flex', alignItems: 'flex-start', gap: 8, background: '#e8f0fe' }}>
+                    <div style={{ width: 28, height: 28, borderRadius: 8, background: '#001d47', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 700, flexShrink: 0 }}>
+                      {g.nome.slice(0,2).toUpperCase()}
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '11px', fontWeight: 700, color: '#001d47', lineHeight: 1.3, wordBreak: 'break-word' }}>{g.nome}</div>
+                      <div style={{ fontSize: '9px', color: '#64748b' }}>{membriGruppo.length} risorse</div>
+                    </div>
+                  </div>
+                  {/* Celle mesi gruppo */}
+                  {MONTHS.map(m => {
+                    const cards = ((assignedCards[rKey] || {})[m.key] || [])
+                      .filter(c => showCompleted || !c.isCompleted)
+                      .slice().sort((a, b) => (a.dataInizio||'').localeCompare(b.dataInizio||''));
+                    const isSimCell = simulation?.resId === rKey && simulation?.monthKey === m.key;
+                    // capacity collettiva del gruppo
+                    const [myCel, mmCel] = m.key.split('-').map(Number);
+                    const todayNow = new Date(); todayNow.setHours(0,0,0,0);
+                    const todayKeyNow = `${todayNow.getFullYear()}-${String(todayNow.getMonth()+1).padStart(2,'0')}`;
+                    const wdGruppo = workingDaysInMonth(myCel, mmCel-1, m.key === todayKeyNow);
+                    const capacityGruppo = membriGruppo.length * wdGruppo;
+                    const usedGruppoHrs = membriGruppo.reduce((s, ms) => s + ((assigned[staffKey(ms)] || {})[m.key] || 0), 0)
+                      + ((assigned[rKey] || {})[m.key] || 0);
+                    const usedGiorniGruppo = Math.round(usedGruppoHrs / 8);
+                    const freeGruppo = Math.max(0, capacityGruppo - usedGiorniGruppo);
+                    const pctGruppo = capacityGruppo > 0 ? Math.min(1, usedGiorniGruppo / capacityGruppo) : 0;
+                    const colGruppo = capacityColor(usedGiorniGruppo, capacityGruppo);
+                    return (
+                      <div key={m.key}
+                        style={{ flex: 1, minWidth: 100, borderRight: '0.5px solid #bfdbfe', padding: 6, display: 'flex', flexDirection: 'column', gap: 4, minHeight: 72, background: isSimCell ? '#f0fdf8' : 'transparent' }}
+                        onDragOver={e => { if (!dragItem) return; e.preventDefault(); e.currentTarget.style.background = '#E1F5EE'; }}
+                        onDragLeave={e => { e.currentTarget.style.background = isSimCell ? '#f0fdf8' : 'transparent'; }}
+                        onDrop={e => { e.preventDefault(); e.currentTarget.style.background = isSimCell ? '#f0fdf8' : 'transparent'; handleDrop(rKey, m.key); }}>
+                        {cards.map((c, i) => {
+                          const pc = c.priorita === 'alta' ? '#E24B4A' : c.priorita === 'media' ? '#BA7517' : '#639922';
+                          return (
+                            <div key={i}
+                              draggable
+                              onDragStart={e => { e.stopPropagation(); setDragItem({ ...c.raw, _fromCell: true }); }}
+                              onDragEnd={() => setDragItem(null)}
+                              onClick={async () => { const full = await fetchCardFull(c.raw.id); setSelectedCard(full || c.raw); }}
+                              style={{ background: '#fff', border: `0.5px solid #bfdbfe`, borderLeft: `2px solid ${pc}`, borderRadius: 6, padding: '5px 7px', cursor: 'grab', transition: 'all 0.12s', opacity: dragItem?.id === c.raw?.id ? 0.4 : 1 }}
+                              onMouseOver={e => e.currentTarget.style.background = '#f0f6ff'}
+                              onMouseOut={e => e.currentTarget.style.background = '#fff'}>
+                              <div style={{ fontSize: '11px', fontWeight: 500, color: '#0f172a', lineHeight: 1.3, marginBottom: 2 }}>{c.title}</div>
+                              <div style={{ display: 'flex', gap: 4 }}>
+                                <span style={{ fontSize: '10px', color: '#94a3b8' }}>{c.hours}h</span>
+                                {c.dataFine && <span style={{ fontSize: '10px', color: '#185FA5', fontWeight: 500 }}>→ {c.dataFine.slice(8,10)}/{c.dataFine.slice(5,7)}</span>}
+                              </div>
+                            </div>
+                          );
+                        })}
+                        {isSimCell && (
+                          <div style={{ background: '#fff', border: '1.5px dashed #1D9E75', borderRadius: 8, padding: '7px 8px' }}>
+                            <div style={{ fontSize: '11px', fontWeight: 500, color: '#085041', marginBottom: 3 }}>{simulation.title}</div>
+                            <div style={{ fontSize: '10px', color: '#0F6E56', marginBottom: 4 }}>{simulation.hours}h · {simulation.inizio} → {simulation.release}</div>
+                            <div style={{ display: 'flex', gap: 4 }}>
+                              <button onClick={handleConfirm} disabled={saving} style={{ flex: 1, fontSize: '10px', padding: '3px 0', borderRadius: 5, border: '0.5px solid #9FE1CB', background: '#E1F5EE', color: '#085041', cursor: 'pointer', fontWeight: 500 }}>{saving ? '...' : 'Conferma'}</button>
+                              <button onClick={() => setSimulation(null)} style={{ flex: 1, fontSize: '10px', padding: '3px 0', borderRadius: 5, border: '0.5px solid #e2e8f0', background: '#f8fafc', color: '#64748b', cursor: 'pointer' }}>Annulla</button>
+                            </div>
+                          </div>
+                        )}
+                        {cards.length === 0 && !isSimCell && (
+                          <div style={{ flex: 1, border: '1px dashed #bfdbfe', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 40 }}>
+                            <span style={{ fontSize: '10px', color: '#93c5fd' }}>trascina qui</span>
+                          </div>
+                        )}
+                        {/* Capacity aggregata gruppo */}
+                        <div style={{ marginTop: 'auto', paddingTop: 4 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+                            <span style={{ fontSize: '9px', color: '#64748b' }}>{freeGruppo}gg liberi</span>
+                            <span style={{ fontSize: '9px', color: colGruppo, fontWeight: 500 }}>{Math.round(pctGruppo * 100)}%</span>
+                          </div>
+                          <div style={{ height: 3, background: '#dbeafe', borderRadius: 2 }}>
+                            <div style={{ width: `${Math.round(pctGruppo * 100)}%`, height: '100%', background: colGruppo, borderRadius: 2 }} />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
+
+            {/* Righe risorse singole — nascoste se showOnlyGroups */}
+            {!showOnlyGroups && filteredStaff.map(s => {
               const rKey = staffKey(s);
               const initials = `${(s.nome||'').slice(0,1)}${(s.cognome||'').slice(0,1)}`.toUpperCase();
               return (
@@ -794,8 +983,8 @@ export function SviluppoView({ staff, clients = [], isAdmin = false, filterSearc
                                 }}
                                 onClick={async () => {
                                   if (!c.raw) return;
-                                  const { data: fresh } = await supabase.from('attivita').select('*, commessa:commessa_id(nome_commessa, pm_commessa, client_id), bolla:bolla_id(codice, descrizione)').eq('id', c.raw.id).single();
-                                  setSelectedCard(fresh || c.raw);
+                                  const full = await fetchCardFull(c.raw.id);
+                                  setSelectedCard(full || c.raw);
                                 }}
                                 style={{ background: c.isCompleted ? '#f8fafc' : c.isCross ? '#fdf4ff' : '#fff', border: `0.5px solid ${c.isCompleted ? '#e2e8f0' : c.isCross ? '#e9d5ff' : '#e2e8f0'}`, borderLeft: `2px solid ${c.isCompleted ? '#94a3b8' : pc}`, borderRadius: c.isCross ? (c.isFirst ? '6px 0 0 6px' : c.isLast ? '0 6px 6px 0' : '0') : '6px', padding: '5px 7px', cursor: c.isCompleted ? 'default' : 'grab', transition: 'all 0.12s', position: 'relative', opacity: c.isCompleted ? 0.55 : dragItem?.id === c.raw?.id ? 0.4 : 1 }}
                                 onMouseOver={e => { e.currentTarget.style.background = '#f0f4ff'; }}
@@ -880,7 +1069,119 @@ export function SviluppoView({ staff, clients = [], isAdmin = false, filterSearc
             })}
           </div>
         </div>
-      </div>
+      </div>}
+
+      {/* ── Vista Gantt ── */}
+      {sviluppoSubTab === 'gantt' && (() => {
+        const today = new Date(); today.setHours(0,0,0,0);
+        const todayIso = today.toISOString().slice(0,10);
+
+        // Raccogli tutte le attività con data inizio/fine, una per attività (isFirst)
+        const seen = new Set();
+        const allItems = filteredStaff.flatMap(s => {
+          const rKey = staffKey(s);
+          return Object.values(assignedCards[rKey] || {}).flat()
+            .filter(c => {
+              if (!c.dataInizio || !c.dataFine) return false;
+              if (seen.has(c.attId)) return false;
+              seen.add(c.attId);
+              if (!showCompleted && c.isCompleted) return false;
+              if (q) {
+                const txt = (c.title||'').toLowerCase();
+                return txt.includes(q) || (`${s.nome} ${s.cognome}`).toLowerCase().includes(q);
+              }
+              return true;
+            })
+            .map(c => ({ ...c, sNome:`${s.nome} ${s.cognome}`, sInits:`${(s.nome||'').slice(0,1)}${(s.cognome||'').slice(0,1)}`.toUpperCase() }));
+        }).sort((a,b) => a.dataInizio.localeCompare(b.dataInizio));
+
+        // Range visivo = MONTHS selezionati
+        const rangeStart = new Date(MONTHS[0].key + '-01');
+        const lastM = MONTHS[MONTHS.length-1];
+        const [ly,lm] = lastM.key.split('-').map(Number);
+        const rangeEnd = new Date(ly, lm, 0);
+        const totalMs = Math.max(1, rangeEnd - rangeStart);
+
+        const toLeft = d => Math.max(0, Math.min(100, ((new Date(d) - rangeStart) / totalMs) * 100));
+        const toWidth = (s,e) => Math.max(0.4, Math.min(100 - toLeft(s), ((new Date(e) - new Date(s)) / totalMs) * 100));
+
+        const pc = p => p==='alta' ? {bar:'#185FA5',bg:'#E6F1FB',text:'#0C447C',border:'#B5D4F4'}
+                     : p==='media' ? {bar:'#BA7517',bg:'#FAEEDA',text:'#633806',border:'#FAC775'}
+                     :               {bar:'#639922',bg:'#EAF3DE',text:'#27500A',border:'#C0DD97'};
+
+        const todayLeft = toLeft(todayIso);
+
+        return (
+          <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', background:'#f8fafc' }}>
+            {/* Header mesi */}
+            <div style={{ display:'flex', background:'#fff', borderBottom:'0.5px solid #e2e8f0', flexShrink:0 }}>
+              <div style={{ width:280, flexShrink:0, borderRight:'0.5px solid #e2e8f0', padding:'8px 14px', fontSize:10, fontWeight:600, textTransform:'uppercase', letterSpacing:'.07em', color:'#94a3b8' }}>
+                Attività · {allItems.length}
+              </div>
+              <div style={{ flex:1, display:'flex' }}>
+                {MONTHS.map(m => (
+                  <div key={m.key} style={{ flex:1, padding:'8px 6px', fontSize:10, fontWeight:600, textTransform:'uppercase', letterSpacing:'.06em', color:'#94a3b8', borderRight:'0.5px solid #f1f5f9', textAlign:'center' }}>{m.label}</div>
+                ))}
+              </div>
+            </div>
+            {/* Righe */}
+            <div style={{ flex:1, overflowY:'auto' }}>
+              {allItems.length === 0 && (
+                <div style={{ padding:48, textAlign:'center', color:'#94a3b8', fontSize:13, fontStyle:'italic' }}>Nessuna attività pianificata nel periodo</div>
+              )}
+              {allItems.map((c, idx) => {
+                const p = pc(c.priorita);
+                const left = toLeft(c.dataInizio);
+                const width = toWidth(c.dataInizio, c.dataFine);
+                const isLate = !c.isCompleted && c.dataFine < todayIso;
+                const barColor = c.isCompleted ? '#94a3b8' : isLate ? '#E24B4A' : p.bar;
+
+                return (
+                  <div key={c.attId+idx}
+                    onClick={async () => { const full = await fetchCardFull(c.attId); setSelectedCard(full || c.raw); }}
+                    style={{ display:'flex', borderBottom:'0.5px solid #f1f5f9', cursor:'pointer', background: idx%2===0?'#fff':'#fafafa', transition:'background .1s' }}
+                    onMouseOver={e => e.currentTarget.style.background='#f0f6ff'}
+                    onMouseOut={e => e.currentTarget.style.background=idx%2===0?'#fff':'#fafafa'}>
+
+                    {/* Sinistra — info */}
+                    <div style={{ width:280, flexShrink:0, borderRight:'0.5px solid #f1f5f9', padding:'7px 14px', display:'flex', flexDirection:'column', gap:3 }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:6, minWidth:0 }}>
+                        <span style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:11, fontWeight:500, color:p.text }}><span style={{ width:6, height:6, borderRadius:'50%', background:p.bar, flexShrink:0, display:'inline-block' }} />{c.priorita||'media'}</span>
+                        <span style={{ fontSize:12, fontWeight:500, color:c.isCompleted?'#94a3b8':'#0f172a', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', flex:1, textDecoration:c.isCompleted?'line-through':'none' }}>{c.title}</span>
+                      </div>
+                      <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                        <div style={{ width:16, height:16, borderRadius:'50%', background:'#E6F1FB', color:'#0C447C', display:'flex', alignItems:'center', justifyContent:'center', fontSize:8, fontWeight:600, flexShrink:0 }}>{c.sInits}</div>
+                        <span style={{ fontSize:10, color:'#64748b', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', flex:1 }}>{c.sNome}</span>
+                        <span style={{ fontSize:10, color:'#94a3b8', flexShrink:0 }}>{c.hours}h</span>
+                      </div>
+                    </div>
+
+                    {/* Destra — barra Gantt */}
+                    <div style={{ flex:1, position:'relative', minHeight:44 }}>
+                      {/* Sfondo colonne alternate */}
+                      {MONTHS.map((m,i) => (
+                        <div key={m.key} style={{ position:'absolute', top:0, bottom:0, left:`${(i/MONTHS.length)*100}%`, width:`${100/MONTHS.length}%`, background:i%2===0?'transparent':'rgba(0,0,0,.012)', borderRight:'0.5px solid #f1f5f9', pointerEvents:'none' }} />
+                      ))}
+                      {/* Linea oggi */}
+                      {todayLeft > 0 && todayLeft < 100 && (
+                        <div style={{ position:'absolute', top:0, bottom:0, left:`${todayLeft}%`, width:1.5, background:'#E24B4A', opacity:.4, pointerEvents:'none', zIndex:2 }} />
+                      )}
+                      {/* Barra */}
+                      <div style={{ position:'absolute', top:'50%', transform:'translateY(-50%)', left:`${left}%`, width:`${width}%`, minWidth:3, height:20, borderRadius:4, background:barColor, opacity:c.isCompleted?.5:.88, display:'flex', alignItems:'center', overflow:'hidden', paddingLeft:6, zIndex:1 }}>
+                        {width > 6 && (
+                          <span style={{ fontSize:9, fontWeight:600, color:'#fff', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+                            {c.dataInizio.slice(8,10)}/{c.dataInizio.slice(5,7)} → {c.dataFine.slice(8,10)}/{c.dataFine.slice(5,7)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* CardModal — passa isAdmin per abilitare la stellina */}
       {selectedCard && (() => {

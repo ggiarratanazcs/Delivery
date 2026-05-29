@@ -19,24 +19,24 @@ function Sel({ options, value, onChange, placeholder }) {
   return (
     <div ref={ref} style={{ position: 'relative' }}>
       <div onClick={() => setOpen(v => !v)}
-        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: `1.5px solid ${open ? '#0d4d8a' : '#e2e8f0'}`, padding: '8px 2px', cursor: 'pointer', minHeight: 38 }}>
-        <span style={{ fontSize: 13, color: label ? '#0f172a' : '#94a3b8', fontStyle: label ? 'normal' : 'italic' }}>{label || placeholder}</span>
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}><polyline points="6 9 12 15 18 9"/></svg>
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: `1.5px solid ${open ? 'var(--brand-700)' : 'var(--gray-200)'}`, padding: '8px 2px', cursor: 'pointer', minHeight: 38 }}>
+        <span style={{ fontSize: 13, color: label ? 'var(--gray-900)' : 'var(--gray-400)', fontStyle: label ? 'normal' : 'italic' }}>{label || placeholder}</span>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--gray-400)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}><polyline points="6 9 12 15 18 9"/></svg>
       </div>
       {open && (
-        <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, background: '#fff', border: '0.5px solid #e2e8f0', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,18,41,0.14)', zIndex: 9999 }}>
-          <div style={{ padding: '6px 8px', borderBottom: '0.5px solid #f1f5f9' }}>
+        <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, background: 'var(--gray-50)', border: '0.5px solid var(--gray-200)', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,18,41,0.14)', zIndex: 9999 }}>
+          <div style={{ padding: '6px 8px', borderBottom: '0.5px solid var(--gray-100)' }}>
             <input value={search} onChange={e => { e.stopPropagation(); setSearch(e.target.value); }} onClick={e => e.stopPropagation()}
               placeholder="Cerca..." autoFocus
-              style={{ width: '100%', padding: '6px 8px', fontSize: 12, border: '0.5px solid #e2e8f0', borderRadius: 6, outline: 'none', background: '#f8fafc', boxSizing: 'border-box', fontFamily: 'inherit' }} />
+              style={{ width: '100%', padding: '6px 8px', fontSize: 12, border: '0.5px solid var(--gray-200)', borderRadius: 6, outline: 'none', background: 'var(--gray-50)', boxSizing: 'border-box', fontFamily: 'inherit', color: 'var(--gray-900)' }} />
           </div>
           <div style={{ maxHeight: 220, overflowY: 'auto' }}>
-            {filtered.length === 0 && <div style={{ padding: '12px 14px', fontSize: 12, color: '#94a3b8', fontStyle: 'italic' }}>Nessun risultato</div>}
+            {filtered.length === 0 && <div style={{ padding: '12px 14px', fontSize: 12, color: 'var(--gray-400)', fontStyle: 'italic' }}>Nessun risultato</div>}
             {filtered.map((o, i) => (
               <div key={i} onClick={() => { onChange(o.value); setOpen(false); setSearch(''); }}
-                style={{ padding: '10px 14px', fontSize: 13, cursor: 'pointer', background: o.value === value ? '#eff6ff' : '#fff', color: o.value === value ? '#001d47' : '#1e293b', fontWeight: o.value === value ? 500 : 400 }}
-                onMouseOver={e => { if (o.value !== value) e.currentTarget.style.background = '#f8fafc'; }}
-                onMouseOut={e => { if (o.value !== value) e.currentTarget.style.background = '#fff'; }}>
+                style={{ padding: '10px 14px', fontSize: 13, cursor: 'pointer', background: o.value === value ? 'var(--brand-50)' : 'var(--gray-50)', color: o.value === value ? 'var(--brand-800)' : 'var(--gray-900)', fontWeight: o.value === value ? 500 : 400 }}
+                onMouseOver={e => { if (o.value !== value) e.currentTarget.style.background = 'var(--gray-100)'; }}
+                onMouseOut={e => { if (o.value !== value) e.currentTarget.style.background = 'var(--gray-50)'; }}>
                 {o.label}
               </div>
             ))}
@@ -70,10 +70,10 @@ export function NuovaAttivitaWizard({ clients, onClose, onNuovaCommessa, onApriC
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={e => e.stopPropagation()}
-        style={{ position: 'relative', maxWidth: 480, width: '100%', borderRadius: 20, padding: 0 }}>
+        style={{ position: 'relative', maxWidth: 480, width: '100%', borderRadius: 20, padding: 0, overflow: 'hidden' }}>
 
         {/* Header */}
-        <div style={{ background: '#001d47', padding: '16px 20px 18px' }}>
+        <div style={{ background: 'var(--brand-800)', padding: '16px 20px 18px' }}>
           <button onClick={onClose} style={{ position: 'absolute', top: 12, right: 14, background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 6, width: 28, height: 28, cursor: 'pointer', color: '#fff', fontSize: 16 }}>&#215;</button>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div>
@@ -96,30 +96,30 @@ export function NuovaAttivitaWizard({ clients, onClose, onNuovaCommessa, onApriC
 
         {/* Step 1 — Scelta */}
         {step === 1 && (
-          <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: 12, background: 'var(--gray-50)' }}>
             {/* Opzione A — Nuova commessa */}
             <div onClick={onNuovaCommessa}
-              style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '18px 20px', borderRadius: 14, border: '1.5px solid #e2e8f0', cursor: 'pointer', transition: 'all 0.15s' }}
-              onMouseOver={e => { e.currentTarget.style.borderColor = '#185FA5'; e.currentTarget.style.background = '#f0f7ff'; }}
-              onMouseOut={e => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.background = '#fff'; }}>
-              <div style={{ width: 44, height: 44, borderRadius: 12, background: '#E6F1FB', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#185FA5" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+              style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '18px 20px', borderRadius: 14, border: '1.5px solid var(--gray-200)', background: 'var(--gray-50)', cursor: 'pointer', transition: 'all 0.15s' }}
+              onMouseOver={e => { e.currentTarget.style.borderColor = 'var(--brand-700)'; e.currentTarget.style.background = 'var(--brand-50)'; }}
+              onMouseOut={e => { e.currentTarget.style.borderColor = 'var(--gray-200)'; e.currentTarget.style.background = 'var(--gray-50)'; }}>
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: 'var(--brand-100)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--brand-700)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                   <rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3H8a2 2 0 0 0-2 2v2h12V5a2 2 0 0 0-2-2z"/>
                   <line x1="12" y1="12" x2="12" y2="17"/><line x1="9.5" y1="14.5" x2="14.5" y2="14.5"/>
                 </svg>
               </div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 14, fontWeight: 600, color: '#0f172a' }}>Nuova commessa</div>
-                <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>Crea una nuova commessa per un cliente esistente</div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--gray-900)' }}>Nuova commessa</div>
+                <div style={{ fontSize: 12, color: 'var(--gray-400)', marginTop: 2 }}>Crea una nuova commessa per un cliente esistente</div>
               </div>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--gray-400)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
             </div>
 
             {/* Opzione B — Commessa esistente */}
             <div onClick={() => setStep(2)}
-              style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '18px 20px', borderRadius: 14, border: '1.5px solid #e2e8f0', cursor: 'pointer', transition: 'all 0.15s' }}
+              style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '18px 20px', borderRadius: 14, border: '1.5px solid var(--gray-200)', background: 'var(--gray-50)', cursor: 'pointer', transition: 'all 0.15s' }}
               onMouseOver={e => { e.currentTarget.style.borderColor = '#0F6E56'; e.currentTarget.style.background = '#f0fdf8'; }}
-              onMouseOut={e => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.background = '#fff'; }}>
+              onMouseOut={e => { e.currentTarget.style.borderColor = 'var(--gray-200)'; e.currentTarget.style.background = 'var(--gray-50)'; }}>
               <div style={{ width: 44, height: 44, borderRadius: 12, background: '#E1F5EE', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0F6E56" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
@@ -127,32 +127,32 @@ export function NuovaAttivitaWizard({ clients, onClose, onNuovaCommessa, onApriC
                 </svg>
               </div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 14, fontWeight: 600, color: '#0f172a' }}>Commessa esistente</div>
-                <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>Apri e modifica una commessa già presente</div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--gray-900)' }}>Commessa esistente</div>
+                <div style={{ fontSize: 12, color: 'var(--gray-400)', marginTop: 2 }}>Apri e modifica una commessa già presente</div>
               </div>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--gray-400)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
             </div>
           </div>
         )}
 
         {/* Step 2 — Seleziona commessa */}
         {step === 2 && (
-          <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: 16, background: 'var(--gray-50)' }}>
             <div>
-              <div style={{ fontSize: 10, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>Cliente</div>
+              <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--gray-400)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>Cliente</div>
               <Sel options={clienteOpts} value={clienteId} onChange={v => { setClienteId(v); setCommessaId(''); }} placeholder="Seleziona cliente..." />
             </div>
             {clienteId && (
               <div>
-                <div style={{ fontSize: 10, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>Commessa</div>
+                <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--gray-400)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>Commessa</div>
                 <Sel options={commesseOpts} value={commessaId} onChange={setCommessaId} placeholder="Seleziona commessa..." />
               </div>
             )}
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, paddingTop: 8, borderTop: '0.5px solid #f1f5f9', marginTop: 4 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, paddingTop: 8, borderTop: '0.5px solid var(--gray-100)', marginTop: 4 }}>
               <button onClick={() => { setStep(1); setClienteId(''); setCommessaId(''); }}
-                style={{ padding: '8px 16px', borderRadius: 10, border: '0.5px solid #e2e8f0', background: 'transparent', color: '#64748b', fontSize: 12, cursor: 'pointer' }}>Indietro</button>
+                style={{ padding: '8px 16px', borderRadius: 10, border: '0.5px solid var(--gray-200)', background: 'transparent', color: 'var(--gray-500)', fontSize: 12, cursor: 'pointer' }}>Indietro</button>
               <button onClick={handleApriCommessa} disabled={!commessaId}
-                style={{ padding: '8px 20px', borderRadius: 10, border: 'none', background: commessaId ? '#001d47' : '#e2e8f0', color: commessaId ? '#fff' : '#94a3b8', fontSize: 12, fontWeight: 500, cursor: commessaId ? 'pointer' : 'default' }}>
+                style={{ padding: '8px 20px', borderRadius: 10, border: 'none', background: commessaId ? 'var(--brand-800)' : 'var(--gray-200)', color: commessaId ? '#fff' : 'var(--gray-400)', fontSize: 12, fontWeight: 500, cursor: commessaId ? 'pointer' : 'default' }}>
                 Apri commessa
               </button>
             </div>
@@ -179,10 +179,10 @@ export function CommessaPopup({ commessaId, clients, staff, assignments, current
   if (!co) return null;
 
   const TabBar = ({ tabs, active, onChange }) => (
-    <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', padding: '0 24px', gap: 0 }}>
+    <div style={{ display: 'flex', borderBottom: '1px solid var(--gray-200)', padding: '0 24px', gap: 0, background: 'var(--gray-50)' }}>
       {tabs.map(t => (
         <button key={t.key} onClick={() => onChange(t.key)}
-          style={{ padding: '12px 16px', border: 'none', borderBottom: active === t.key ? '2px solid #0054a6' : '2px solid transparent', background: 'transparent', color: active === t.key ? '#0054a6' : '#64748b', fontSize: 12, fontWeight: active === t.key ? 600 : 400, cursor: 'pointer' }}>
+          style={{ padding: '12px 16px', border: 'none', borderBottom: active === t.key ? '2px solid var(--brand-600)' : '2px solid transparent', background: 'transparent', color: active === t.key ? 'var(--brand-600)' : 'var(--gray-500)', fontSize: 12, fontWeight: active === t.key ? 600 : 400, cursor: 'pointer' }}>
           {t.label}
         </button>
       ))}
@@ -195,7 +195,7 @@ export function CommessaPopup({ commessaId, clients, staff, assignments, current
         style={{ position: 'relative', maxWidth: 720, width: '100%', borderRadius: 20, padding: 0, overflow: 'hidden', maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}>
 
         {/* Header navy */}
-        <div style={{ background: '#001d47', padding: '14px 20px 16px', flexShrink: 0 }}>
+        <div style={{ background: 'var(--brand-800)', padding: '14px 20px 16px', flexShrink: 0 }}>
           <button onClick={onClose} style={{ position: 'absolute', top: 12, right: 14, background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 6, width: 28, height: 28, cursor: 'pointer', color: '#fff', fontSize: 16 }}>&#215;</button>
           <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 4 }}>{co.clientName}</div>
           <div style={{ fontSize: 16, fontWeight: 500, color: '#fff' }}>{co.nome_commessa}</div>
@@ -208,10 +208,10 @@ export function CommessaPopup({ commessaId, clients, staff, assignments, current
         </div>
 
         {/* Bottoni azione */}
-        <div style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', padding: '10px 20px', display: 'flex', gap: 8, flexShrink: 0 }}>
+        <div style={{ background: 'var(--gray-100)', borderBottom: '1px solid var(--gray-200)', padding: '10px 20px', display: 'flex', gap: 8, flexShrink: 0 }}>
           {progettoInfo?.exists && (
             <button onClick={() => onOpenProgetto && onOpenProgetto(progettoInfo.id, co.id)}
-              style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid #bfdbfe', background: '#eff6ff', color: '#0054a6', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}>
+              style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid var(--brand-100)', background: 'var(--brand-50)', color: 'var(--brand-700)', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}>
               Apri progetto
             </button>
           )}
@@ -229,17 +229,17 @@ export function CommessaPopup({ commessaId, clients, staff, assignments, current
         <TabBar tabs={[{ key: 'team', label: 'Team' }, { key: 'pianificazione', label: 'Pianificazione mensile' }, { key: 'bolle', label: 'Bolle & Consuntivi' }]} active={commessaTab} onChange={setCommessaTab} />
 
         {/* Corpo scrollabile */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', background: 'var(--gray-50)' }}>
 
           {commessaTab === 'team' && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-              {(co.team || []).length === 0 && <div style={{ fontSize: 13, color: '#94a3b8', fontStyle: 'italic' }}>Nessuna risorsa assegnata</div>}
+              {(co.team || []).length === 0 && <div style={{ fontSize: 13, color: 'var(--gray-400)', fontStyle: 'italic' }}>Nessuna risorsa assegnata</div>}
               {(co.team || []).map(s => {
                 const ac = getAvatarColor(s);
                 return (
-                  <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10, padding: '8px 14px' }}>
+                  <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--gray-100)', border: '1px solid var(--gray-200)', borderRadius: 10, padding: '8px 14px' }}>
                     <div style={{ width: 26, height: 26, borderRadius: '50%', background: ac.bg, color: ac.text, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700 }}>{getInitials(s)}</div>
-                    <span style={{ fontSize: 13, fontWeight: 500, color: '#0f172a' }}>{s}</span>
+                    <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--gray-900)' }}>{s}</span>
                   </div>
                 );
               })}
@@ -250,23 +250,23 @@ export function CommessaPopup({ commessaId, clients, staff, assignments, current
             <div style={{ overflowX: 'auto' }}>
               <table style={{ borderCollapse: 'separate', borderSpacing: 0, fontSize: 12, minWidth: '100%' }}>
                 <thead><tr>
-                  <th style={{ textAlign: 'left', padding: '8px 12px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', minWidth: 140, position: 'sticky', left: 0 }}>Risorsa</th>
-                  {currentMonths.map(m => <th key={m.label} style={{ textAlign: 'center', padding: '8px 10px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', minWidth: 60, fontSize: 11, fontWeight: 600, color: '#0054a6', textTransform: 'uppercase' }}>{m.label}</th>)}
+                  <th style={{ textAlign: 'left', padding: '8px 12px', background: 'var(--gray-100)', borderBottom: '1px solid var(--gray-200)', minWidth: 140, position: 'sticky', left: 0, color: 'var(--gray-700)' }}>Risorsa</th>
+                  {currentMonths.map(m => <th key={m.label} style={{ textAlign: 'center', padding: '8px 10px', background: 'var(--gray-100)', borderBottom: '1px solid var(--gray-200)', minWidth: 60, fontSize: 11, fontWeight: 600, color: 'var(--brand-600)', textTransform: 'uppercase' }}>{m.label}</th>)}
                 </tr></thead>
                 <tbody>
-                  <tr style={{ background: '#f0f7ff' }}>
-                    <td style={{ padding: '8px 12px', fontWeight: 700, color: '#0054a6', borderBottom: '1px solid #e2e8f0', position: 'sticky', left: 0, background: '#f0f7ff', fontSize: 11, textTransform: 'uppercase' }}>Totale</td>
-                    {currentMonths.map(m => { const tot = (co.team || []).reduce((s, mem) => s + (parseFloat(assignments[`${co.id}-${mem}-${m.label}`]) || 0), 0); return <td key={m.label} style={{ textAlign: 'center', padding: '8px', borderBottom: '1px solid #e2e8f0', fontWeight: 700, color: '#0054a6' }}>{tot > 0 ? tot : ''}</td>; })}
+                  <tr style={{ background: 'var(--brand-50)' }}>
+                    <td style={{ padding: '8px 12px', fontWeight: 700, color: 'var(--brand-600)', borderBottom: '1px solid var(--gray-200)', position: 'sticky', left: 0, background: 'var(--brand-50)', fontSize: 11, textTransform: 'uppercase' }}>Totale</td>
+                    {currentMonths.map(m => { const tot = (co.team || []).reduce((s, mem) => s + (parseFloat(assignments[`${co.id}-${mem}-${m.label}`]) || 0), 0); return <td key={m.label} style={{ textAlign: 'center', padding: '8px', borderBottom: '1px solid var(--gray-200)', fontWeight: 700, color: 'var(--brand-600)' }}>{tot > 0 ? tot : ''}</td>; })}
                   </tr>
                   {(co.team || []).map(mem => (
                     <tr key={mem}>
-                      <td style={{ padding: '8px 12px', color: '#374151', borderBottom: '1px solid #f1f5f9', position: 'sticky', left: 0, background: '#fff' }}>
+                      <td style={{ padding: '8px 12px', color: 'var(--gray-700)', borderBottom: '1px solid var(--gray-100)', position: 'sticky', left: 0, background: 'var(--gray-50)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <Avatar name={mem} size={22} />
                           {mem}
                         </div>
                       </td>
-                      {currentMonths.map(m => { const v = parseFloat(assignments[`${co.id}-${mem}-${m.label}`]) || 0; return <td key={m.label} style={{ textAlign: 'center', padding: '6px 8px', borderBottom: '1px solid #f1f5f9' }}>{v > 0 && <span style={{ display: 'inline-block', background: '#eff6ff', color: '#0054a6', borderRadius: 6, padding: '2px 8px', fontWeight: 600, fontSize: 11 }}>{v}</span>}</td>; })}
+                      {currentMonths.map(m => { const v = parseFloat(assignments[`${co.id}-${mem}-${m.label}`]) || 0; return <td key={m.label} style={{ textAlign: 'center', padding: '6px 8px', borderBottom: '1px solid var(--gray-100)' }}>{v > 0 && <span style={{ display: 'inline-block', background: 'var(--brand-50)', color: 'var(--brand-600)', borderRadius: 6, padding: '2px 8px', fontWeight: 600, fontSize: 11 }}>{v}</span>}</td>; })}
                     </tr>
                   ))}
                 </tbody>

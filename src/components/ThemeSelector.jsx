@@ -1,5 +1,29 @@
 import React, { useState, useEffect } from 'react';
 
+// ─── RIPRISTINO TEMA IMMEDIATO (prima che React monti) ────────────────────────
+// Evita il flash di tema sbagliato al refresh
+;(() => {
+  const savedId = localStorage.getItem("zcs-theme");
+  if (savedId && savedId !== "default") {
+    const theme = [
+      { id: "slate",     vars: { "--brand-900": "#1c1917","--brand-800": "#292524","--brand-700": "#44403c","--brand-600": "#78716c","--brand-500": "#a8a29e","--brand-100": "#f5f5f4","--brand-50": "#fafaf9","--gray-950": "#0c0a09","--gray-900": "#1c1917","--gray-700": "#44403c","--gray-500": "#78716c","--gray-400": "#a8a29e","--gray-200": "#e7e5e4","--gray-100": "#f5f5f4","--gray-50": "#fafaf9","--color-surface": "#fefefe" }, preview: { bg: "#f7f6f3", text: "#1c1917" } },
+      { id: "forest",    vars: { "--brand-900": "#052e16","--brand-800": "#14532d","--brand-700": "#166534","--brand-600": "#15803d","--brand-500": "#22c55e","--brand-100": "#dcfce7","--brand-50": "#f0fdf4","--gray-950": "#052e16","--gray-900": "#14532d","--gray-700": "#2d4a38","--gray-500": "#4a7c59","--gray-400": "#7fb89a","--gray-200": "#c8e6d4","--gray-100": "#e8f5ec","--gray-50": "#f0f7f3","--color-surface": "#f9fdf9" }, preview: { bg: "#f0f7f3", text: "#052e16" } },
+      { id: "midnight",  vars: { "--brand-900": "#bfdbfe","--brand-800": "#93c5fd","--brand-700": "#60a5fa","--brand-600": "#3b82f6","--brand-500": "#2563eb","--brand-100": "#1e3a5f","--brand-50": "#172035","--gray-950": "#f1f5f9","--gray-900": "#e2e8f0","--gray-700": "#cbd5e1","--gray-500": "#94a3b8","--gray-400": "#64748b","--gray-200": "#2a3148","--gray-100": "#1e2538","--gray-50": "#161a27","--color-surface": "#1c2030" }, preview: { bg: "#111318", text: "#cbd5e1" } },
+    ].find(t => t.id === savedId);
+    if (theme) {
+      const root = document.documentElement;
+      Object.entries(theme.vars).forEach(([k, v]) => root.style.setProperty(k, v));
+      document.documentElement.setAttribute('data-theme', savedId);
+      if (typeof document !== 'undefined') {
+        document.addEventListener('DOMContentLoaded', () => {
+          document.body.style.backgroundColor = theme.preview.bg;
+          document.body.style.color = theme.preview.text;
+        });
+      }
+    }
+  }
+})();
+
 // ─── DEFINIZIONE TEMI ────────────────────────────────────────────────────────
 // Ogni tema sovrascrive i token --brand-* e --gray-* già presenti in style.css.
 // Non serve aggiungere NULLA al CSS: questi token esistono già tutti.
@@ -35,6 +59,7 @@ const THEMES = [
       "--gray-200":  "#e2e8f0",
       "--gray-100":  "#f1f5f9",
       "--gray-50":   "#f8fafc",
+      "--color-surface": "#ffffff",
     },
   },
   {
@@ -68,6 +93,7 @@ const THEMES = [
       "--gray-200":  "#e7e5e4",
       "--gray-100":  "#f5f5f4",
       "--gray-50":   "#fafaf9",
+      "--color-surface": "#fefefe",
     },
   },
   {
@@ -101,6 +127,7 @@ const THEMES = [
       "--gray-200":  "#c8e6d4",
       "--gray-100":  "#e8f5ec",
       "--gray-50":   "#f0f7f3",
+      "--color-surface": "#f9fdf9",
     },
   },
   {
@@ -134,6 +161,7 @@ const THEMES = [
       "--gray-200":  "#2a3148",
       "--gray-100":  "#1e2538",
       "--gray-50":   "#161a27",
+      "--color-surface": "#1c2030",
     },
   },
 ];
@@ -144,9 +172,125 @@ function applyTheme(theme) {
   Object.entries(theme.vars).forEach(([key, val]) => {
     root.style.setProperty(key, val);
   });
+  if (theme.vars['--color-surface']) {
+    root.style.setProperty('--color-surface', theme.vars['--color-surface']);
+  }
   document.body.style.backgroundColor = theme.preview.bg;
   document.body.style.color = theme.preview.text;
+  root.setAttribute('data-theme', theme.id);
   localStorage.setItem("zcs-theme", theme.id);
+
+  // Inietta/aggiorna un foglio di stile dinamico per il tema notte
+  let dynStyle = document.getElementById('zcs-theme-dynamic');
+  if (!dynStyle) {
+    dynStyle = document.createElement('style');
+    dynStyle.id = 'zcs-theme-dynamic';
+    document.head.appendChild(dynStyle);
+  }
+
+  if (theme.id === 'midnight') {
+    dynStyle.textContent = `
+      /* Forza sfondo scuro su elementi con style inline bianchi */
+      [data-theme="midnight"] * {
+        --white-override: #1c2030;
+        --lightgray-override: #161a27;
+      }
+      /* Tutti i tag con background bianco inline */
+      [data-theme="midnight"] [style*="background: #fff"] { background: #1c2030 !important; }
+      [data-theme="midnight"] [style*="background:#fff"] { background: #1c2030 !important; }
+      [data-theme="midnight"] [style*="background: white"] { background: #1c2030 !important; }
+      [data-theme="midnight"] [style*="background: #ffffff"] { background: #1c2030 !important; }
+      [data-theme="midnight"] [style*="background: #f8fafc"] { background: #111318 !important; }
+      [data-theme="midnight"] [style*="background: #f1f5f9"] { background: #161a27 !important; }
+      [data-theme="midnight"] [style*="background: #f0f7ff"] { background: #172035 !important; }
+      [data-theme="midnight"] [style*="background: #f0f7f3"] { background: #0d1f14 !important; }
+      [data-theme="midnight"] [style*="backgroundColor: #fff"] { background-color: #1c2030 !important; }
+      [data-theme="midnight"] [style*="backgroundColor: white"] { background-color: #1c2030 !important; }
+
+      /* Testi scuri */
+      [data-theme="midnight"] [style*="color: #0f172a"] { color: #e2e8f0 !important; }
+      [data-theme="midnight"] [style*="color: #1e293b"] { color: #cbd5e1 !important; }
+      [data-theme="midnight"] [style*="color: #334155"] { color: #94a3b8 !important; }
+      [data-theme="midnight"] [style*="color: #475569"] { color: #94a3b8 !important; }
+      [data-theme="midnight"] [style*="color: #64748b"] { color: #64748b !important; }
+      [data-theme="midnight"] [style*="color: #001d47"] { color: #93c5fd !important; }
+      [data-theme="midnight"] [style*="color: rgb(15, 23, 42)"] { color: #e2e8f0 !important; }
+      [data-theme="midnight"] [style*="color: rgb(30, 41, 59)"] { color: #cbd5e1 !important; }
+
+      /* Bordi */
+      [data-theme="midnight"] [style*="border: 1px solid #e2e8f0"] { border-color: #2a3148 !important; }
+      [data-theme="midnight"] [style*="border: 0.5px solid #e2e8f0"] { border-color: #2a3148 !important; }
+      [data-theme="midnight"] [style*="border-bottom: 1px solid #e2e8f0"] { border-bottom-color: #2a3148 !important; }
+      [data-theme="midnight"] [style*="border-right: 1px solid #e2e8f0"] { border-right-color: #2a3148 !important; }
+      [data-theme="midnight"] [style*="border: 1px solid #f1f5f9"] { border-color: #1e2538 !important; }
+      [data-theme="midnight"] [style*="border-bottom: 1px solid #f1f5f9"] { border-bottom-color: #1e2538 !important; }
+
+      /* Header nav */
+      [data-theme="midnight"] header { background: #161a27 !important; }
+
+      /* Dropdown / popup flottanti */
+      [data-theme="midnight"] [style*="position: fixed"][style*="background: #fff"],
+      [data-theme="midnight"] [style*="position: fixed"][style*="background: white"],
+      [data-theme="midnight"] [style*="position: absolute"][style*="background: #fff"],
+      [data-theme="midnight"] [style*="position: absolute"][style*="background: white"] {
+        background: #1c2030 !important;
+        border-color: #2a3148 !important;
+      }
+
+      /* Table rows */
+      [data-theme="midnight"] tbody tr { background: #1c2030 !important; }
+      [data-theme="midnight"] tbody tr:nth-child(even) { background: #1e2538 !important; }
+      [data-theme="midnight"] thead tr, [data-theme="midnight"] th { background: #161a27 !important; color: #64748b !important; }
+      [data-theme="midnight"] td { border-color: #2a3148 !important; color: #cbd5e1 !important; }
+
+      /* Modal .modal-content */
+      [data-theme="midnight"] .modal-content { background: #1c2030 !important; color: #e2e8f0 !important; }
+
+      /* Toolbar */
+      [data-theme="midnight"] .toolbar { background: #1c2030 !important; border-color: #2a3148 !important; }
+
+      /* Input */
+      [data-theme="midnight"] input, [data-theme="midnight"] select, [data-theme="midnight"] textarea {
+        background-color: transparent !important;
+        color: #e2e8f0 !important;
+        border-color: #2a3148 !important;
+      }
+      [data-theme="midnight"] input[type="date"] { color-scheme: dark; }
+
+      /* Select options */
+      [data-theme="midnight"] select option { background: #1c2030 !important; color: #e2e8f0 !important; }
+
+      /* Badge chiari su sfondo chiaro */
+      [data-theme="midnight"] [style*="background: #f0fdf4"] { background: #052e16 !important; }
+      [data-theme="midnight"] [style*="background: #fef9c3"] { background: #1f1500 !important; }
+      [data-theme="midnight"] [style*="background: #fef2f2"] { background: #1f0000 !important; }
+      [data-theme="midnight"] [style*="background: #fffbeb"] { background: #1a1000 !important; }
+      [data-theme="midnight"] [style*="background: #e6f1fb"] { background: #0f2744 !important; }
+      [data-theme="midnight"] [style*="background: #eff6ff"] { background: #0f2744 !important; }
+      [data-theme="midnight"] [style*="background: #eaf3de"] { background: #0a1f0a !important; }
+      [data-theme="midnight"] [style*="background: #faeeda"] { background: #1f1000 !important; }
+      [data-theme="midnight"] [style*="background: #e1f5ee"] { background: #041510 !important; }
+
+      /* Scrollbar */
+      [data-theme="midnight"] ::-webkit-scrollbar { width: 6px; height: 6px; }
+      [data-theme="midnight"] ::-webkit-scrollbar-track { background: #111318; }
+      [data-theme="midnight"] ::-webkit-scrollbar-thumb { background: #2a3148; border-radius: 3px; }
+      [data-theme="midnight"] ::-webkit-scrollbar-thumb:hover { background: #3b4566; }
+
+      /* Sticky columns nelle tabelle */
+      [data-theme="midnight"] .sticky-col { background: #1c2030 !important; border-color: #2a3148 !important; }
+      [data-theme="midnight"] .sticky-col-2 { background: #1c2030 !important; }
+
+      /* Sidebar */
+      [data-theme="midnight"] .sidebar-content { background: #161a27 !important; border-color: #2a3148 !important; }
+
+      /* View content background */
+      [data-theme="midnight"] .view-content { background: #111318 !important; }
+      [data-theme="midnight"] .table-container { background: #111318 !important; }
+    `;
+  } else {
+    dynStyle.textContent = '';
+  }
 }
 
 // ─── MINI MOCKUP ─────────────────────────────────────────────────────────────
@@ -474,14 +618,6 @@ export default function ThemeSelector() {
             />
           ))}
         </div>
-      </div>
-
-      {/* Anteprima live */}
-      <div style={{
-        background: "var(--gray-50)", border: "1px solid var(--gray-200)",
-        borderRadius: "var(--radius-lg)", padding: "18px", transition: "all 0.35s",
-      }}>
-        <LivePreview themeName={activeTheme.label} />
       </div>
 
       {/* Toast */}
